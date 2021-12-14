@@ -97,3 +97,4 @@ end
 
 include("TropicalVariety/constructors.jl")
 include("TropicalVariety/properties.jl")
+include("TropicalVariety/standard_constructions.jl")
