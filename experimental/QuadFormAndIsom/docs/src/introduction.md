@@ -38,9 +38,8 @@ there are still computational bottlenecks due to non-optimized algorithms.
 
 Among the possible improvements and extensions:
 * Implement extra methods for lattices with isometries of infinite order;
-* Extend existing methods for equivariant primitive embeddings/extensions.
 
-## Currently application of this project
+## Current application of this project
 
 The project was initiated by S. Brandhorst and T. Hofmann for classifying
 finite subgroups of automorphisms of K3 surfaces. Our current goal is to use

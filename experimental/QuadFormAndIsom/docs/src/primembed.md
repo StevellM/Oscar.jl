@@ -5,9 +5,9 @@ CurrentModule = Oscar
 We introduce here the necessary definitions and results which lie behind the
 methods presented. Most of the content is taken from [Nik79](@cite).
 
-# Primitive embeddings in even lattices
+# Nikulin's theory on primitive embeddings
 
-## Nikulin's theory
+## Primitive embeddings
 
 Given an embedding $i\colon S\hookrightarrow T$ of non-degenerate integral
 integer lattices, we call $i$ *primitive* if its cokernel $T/i(S)$ is torsion
@@ -51,26 +51,75 @@ primitive_embeddings(::TorQuadModule, ::Tuple{Int, Int},
 ::ZZLat)
 ```
 
-In order to compute such primitive embeddings of a lattice `M` into a lattice
-`L`, one first computes the possible genera for the orthogonal of `M` in `L`
-(after embedding), and for each lattice `N` in such a genus, one computes
+In order to compute such primitive embeddings of a lattice $M$ into a lattice
+$L$, one first computes the possible genera for the orthogonal of $M$ in $L$
+(after embedding), and for each lattice $N$ in such a genus, one computes
 isomorphism classes of *primitive extensions* of $M \perp N$ modulo $\bar{O}(N)$
-(and $\bar{O}(M)$ in the case of classification of primitive sublattices of `L`
-isometric to `M`).
+(and $\bar{O}(M)$ in the case of classification of primitive sublattices of $L$
+isometric to $M$).
+
+```docs
+primitive_extensions(::ZZLat, ::ZZLat, ::TorQuadModule)
+```
 
 We recall that a *primitive extension* of the orthogonal direct sum of two
-integral integer lattices `M` and `N` is an overlattice `L` of $M\perp N$ such
-that both `M` and `N` embed primitively in `L` (via the natural embeddings
+integral integer lattices $M$ and $N$ is an overlattice $L$ of $M\perp N$ such
+that both $M$ and $N$ embed primitively in $L$ (via the natural embeddings
 $M,N \to M\perp N\subseteq L$). Such primitive extensions are obtained, and
 classified, by looking for *gluings* between anti-isometric subgroups of the
-respective discriminant groups of `M` and `N`. The construction of an
+respective discriminant groups of $M$ and $N$. The construction of an
 overlattice is determined by the graph of such glue map. 
+
+## Equivariant primitive embeddings
+
+Let $(M, f_M)$ be an even $\mathbb{Z}$-lattice with isometry and let $L$ be
+an even $\mathbb{Z}$-lattice. A primitive embedding $i\colon M \hookrightarrow L$
+is called *equivariant* if there exists an isometry $f_L$ of $L$ which preserves
+$M$ and restricts to $f_M$ along $i$. The theory about
+*equivariant primitive embeddings* is similar to the one of primitive
+embeddings but in the category of lattices with isometry. Such an embedding
+as before exists if there exists an appropriate isometry $f_N$ of the complement
+$N$ of $M$ in $L$ which turns the primitive extension $M\perp N\to L$ into
+an *equivariant primitive extensions*.
+
+An *equivariant primitive extension* of a pair of integer lattices with
+isometries $(M, f_M)$ and $(N, f_N)$ is a primitive extension of $M$ and $N$
+obtained by gluing two subgroups which are respectively $\bar{f_M}$ and
+$\bar{f_N}$ stable along a glue map which commutes with these two actions. If
+such a gluing exists, then the overlattice $L$ of $M\perp N$ is equipped with
+an isometry $f_L$ which preserves both $M$ and $N$, and restricts to $f_M$ and
+$f_N$ respectively.
+
+```@docs
+equivariant_primitive_extensions(::ZZLatWithIsom, ::ZZLatWithIsom, ::TorQuadModule)
+equivariant_primitive_extensions(::ZZLatWithIsom, ::ZZLat, ::TorQuadModule)
+```
+
+Similarly to the case of primitive embeddings, equivariant primitive embeddings
+of $(M, f_M)$ into $L$ are computed modulo the discriminant action of $O(N, f_N)$,
+and *equivariant primitive sublattices* of $L$ isomorphic to $(M, f_M)$ are computed
+modulo the discriminant actions of $O(M, f_M)$ and $O(N, f_N)$.
+
+General methods related to equivariant primitive embeddings have been
+algorithmically implemented.
+
+We provide 4 kinds of output:
+* A boolean, which only returns whether there exists an equivariant primitive embedding;
+* A single equivariant primitive embedding as soon as the algorithm computes one;
+* A list of representatives of isomorphism classes of equivariant primitive embeddings;
+* A list of representatives of isomorphism classes of equivariant primitive sublattices.
+
+```@docs
+equivariant_primitive_embeddings(::ZZLat, ::ZZLatWithIsom)
+equivariant_primitive_embeddings(::TorQuadModule, ::Tuple{Int, Int}, ::ZZLatWithIsom)
+equivariant_primitive_embeddings(::ZZGenus, ::ZZLatWithIsom)
+```
 
 ## Admissible equivariant primitive extensions
 
 The following function is an interesting tool provided by [BH23](@cite). Given
-a triple of integer lattices with isometry `((A, a), (B, b), (C, c))` and two prime
-numbers `p` and `q` (possibly equal), if `(A, B, C)` is `p`-admissible, this
+a triple of integer lattices with isometry $((A, a), (B, b), (C, c))$ and two prime
+numbers $p$ and $q$ (possibly equal), if $(A, B, C)$ is $p$-admissible, this
 function returns representatives of isomorphism classes of equivariant primitive
 extensions $(A, a)\perp (B, b)\to (D, d)$ such that the type of $(D, d^p)$ is
 equal to the type of $(C, c)$ (see [`type(::ZZLatWithIsom)`](@ref)).
@@ -78,11 +127,3 @@ equal to the type of $(C, c)$ (see [`type(::ZZLatWithIsom)`](@ref)).
 ```@docs
 admissible_equivariant_primitive_extensions(::ZZLatWithIsom, ::ZZLatWithIsom, ::ZZLatWithIsom, ::Integer, ::Integer)
 ```
-
-An *equivariant primitive extension* of a pair of integer lattices with
-isometries $(M, f_M)$ and $(N, f_N)$ is a primitive extension of `M` and `N`
-obtained by gluing two subgroups which are respectively $\bar{f_M}$ and
-$\bar{f_N}$ stable along a glue map which commutes with these two actions. If
-such a gluing exists, then the overlattice `L` of $M\perp N$ is equipped with
-an isometry $f_L$ which preserves both `M` and `N`, and restricts to $f_M$ and
-$f_N$ respectively.

@@ -2,7 +2,7 @@
 CurrentModule = Oscar
 ```
 
-# Lattice with isometry
+# Lattices with isometry
 
 We call *lattice with isometry* any pair $(L, f)$ consisting of an integer
 lattice $L$ together with an isometry $f \in O(L)$. We refer to the section
@@ -34,7 +34,7 @@ Note that for some computations, it is more convenient to work either with the
 isometry of the lattice itself, or with the fixed isometry of the ambient
 quadratic space inducing it on the lattice.
 
-## Constructor
+## Constructors
 
 We provide two ways to construct a pair $Lf = (L,f)$ consisting of an integer
 lattice endowed with an isometry. One way to construct an object of type
@@ -103,6 +103,7 @@ direct_product(::Vector{ZZLatWithIsom})
 direct_sum(::Vector{ZZLatWithIsom})
 dual(::ZZLatWithIsom)
 lll(::ZZLatWithIsom)
+orthogonal_submodule(::ZZLatWithIsom, ::QQMatrix)
 rescale(::ZZLatWithIsom, ::RationalUnion)
 ```
 
@@ -140,7 +141,7 @@ is_of_hermitian_type(::ZZLatWithIsom)
 is_hermitian(::Dict)
 ```
 
-## Hermitian structure and trace equivalence
+## Hermitian structures and trace equivalence
 
 As mentioned in the previous section, to a lattice with isometry $Lf := (L, f)$
 such that the minimal polynomial of $f$ is irreducible, one can associate a
@@ -152,7 +153,7 @@ to perform the trace equivalence for lattices with isometry of hermitian type.
 hermitian_structure(::ZZLatWithIsom)
 ```
 
-## Discriminant group
+## Discriminant groups
 
 Given an integral lattice with isometry $Lf := (L, f)$, if one denotes by $D_L$ the
 discriminant group of $L$, there exists a natural map $\pi\colon O(L) \to O(D_L)$
@@ -168,10 +169,10 @@ discriminant_group(::ZZLatWithIsom)
 
 For simple cases as for definite lattices, $f$ being plus-or-minus the identity
 or if the rank of $L$ is equal to the totient of the order of $f$ (in the
-finite case), $G_{L,f}$ can be easily computed. The only other case which can
-be currently handled is for lattices with isometry of hermitian type following
-the *hermitian Miranda-Morisson theory* from [BH23](@cite). This has been implemented
-in this project and it can be indirectly used through the general following method:
+finite case), $G_{L,f}$ can be easily computed. For the remaining cases we use
+the hermitian version of *Miranda-Morisson theory* as presented in [BH23](@cite).
+The general computation of $G_{L, f}$ has been implemented in this project and
+it can be indirectly used through the general following method:
 
 ```@docs
 image_centralizer_in_Oq(::ZZLatWithIsom)
@@ -180,6 +181,18 @@ image_centralizer_in_Oq(::ZZLatWithIsom)
 For an implementation of the regular Miranda-Morisson theory, we refer to the
 function `image_in_Oq` which actually computes the image of
 $\pi$ in both the definite and the indefinite case.
+
+We will see later in the section about primitive embeddings that one can compute
+$G_{L,f}$ by induction in some particular cases arising from equivariant
+primitive embeddings of lattices with isometries.
+
+More generally, for a subgroup $G$ of $O(L)$, we have implemented functions
+to compute the images of $G$ and of the stabilizer $G(f)$ in $O(D_L)$:
+
+```@docs
+discriminant_representation(::ZZLat, ::MatrixGroup)
+discriminant_representation_stabilizer(::ZZLatWithIsom, ::MatrixGroup)
+```
 
 We will see later in the section about enumeration of lattices with isometry
 that one can compute $G_{L,f}$ in some particular cases arising from equivariant
@@ -235,4 +248,3 @@ lattices with isometries are *equal* if their ambient quadratic space with
 isometry of type `QuadSpaceWithIsom` are equal, and if the underlying lattices
 $L$ and $L'$ are equal as $\mathbb Z$-modules in the common ambient quadratic
 space.
-

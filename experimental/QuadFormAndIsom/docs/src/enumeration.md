@@ -12,19 +12,19 @@ reference.
 
 ## Admissible triples
 
-Roughly speaking, for a prime number $p$, a *$p$-admissible triple* `(A, B, C)`
-is a triple of integer lattices such that, in certain cases, `C` can be obtained
+Roughly speaking, for a prime number $p$, a *$p$-admissible triple* $(A, B, C)$
+is a triple of integer lattices such that, in certain cases, $C$ can be obtained
 as a primitive extension $A \perp B \to C$ where one can glue along
-$p$-elementary subgroups of the respective discriminant groups of `A` and `B`.
+$p$-elementary subgroups of the respective discriminant groups of $A$ and $B$.
 Note that not all admissible triples satisfy this extension property.
 
-For instance, if $f$ is an isometry of an integer lattice `C` of prime order
-`p`, then for $A := \ker \Phi_1(f)$ and $B := \ker \Phi_p(f)$, one has that
-`(A, B, C)` is $p$-admissible (see Lemma 4.15. in [BH23](@cite)).
+For instance, if $f$ is an isometry of an integer lattice $C$ of prime order
+$p$, then for $A := \ker \Phi_1(f)$ and $B := \ker \Phi_p(f)$, one has that
+$(A, B, C)$ is $p$-admissible (see Lemma 4.15. in [BH23](@cite)).
 
-We say that a triple `(AA, BB, CC)` of genus symbols for integer lattices is
-*$p$-admissible* if there are some lattices $A \in AA$, $B \in BB$ and
-$C \in CC$ such that $(A, B, C)$ is $p$-admissible.
+We say that a triple $(G_A, G_B, G_C)$ of genus symbols for integer lattices is
+*$p$-admissible* if there are some lattices $A \in G_A$, $B \in G_B$ and
+$C \in G_C$ such that $(A, B, C)$ is $p$-admissible.
 
 We use Definition 4.13. and Algorithm 1 of [BH23](@cite) to implement the necessary
 tools for working with admissible triples. Most of the computations consists of

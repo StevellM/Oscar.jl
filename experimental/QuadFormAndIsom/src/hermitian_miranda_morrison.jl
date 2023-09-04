@@ -319,9 +319,10 @@ function _local_determinants_morphism(Lf::ZZLatWithIsom)
     OqL2 = orthogonal_group(qL2)
     ok, phi12 = is_isometric_with_isometry(qL, qL2)
     @hassert :ZZLatWithIsom 1 ok
-    ok, g0 = is_conjugate_with_data(OqL, fqL, OqL(compose(phi12, compose(hom(fqL2), inv(phi12)))))
+    ok, g0 = is_conjugate_with_data(OqL, OqL(compose(phi12, compose(hom(fqL2), inv(phi12))); check = false), fqL)
     @hassert :ZZLatWithIsom 1 ok
-    phi12 = compose(hom(OqL(g0)), phi12)
+    phi12 = compose(hom(g0), phi12)
+    @hassert :ZZLatWithIsom compose(hom(fqL), phi12) == compose(phi12, hom(fqL2))
     @hassert :ZZLatWithIsom 1 is_isometry(phi12)
   else
     Lf2 = Lf
@@ -333,8 +334,9 @@ function _local_determinants_morphism(Lf::ZZLatWithIsom)
   # fqL, G is the group where we want to compute the image of O(L, f). This
   # group G corresponds to U(D_L) in the notation of BH23.
   G2, _ = centralizer(OqL2, fqL2)
-  G, _ = sub(OqL, elem_type(OqL)[OqL(compose(phi12, compose(hom(g), inv(phi12)))) for g in gens(G2)])
-  GtoG2 = hom(G, G2, gens(G), gens(G2))
+  G, GinOqL = sub(OqL, elem_type(OqL)[OqL(compose(phi12, compose(hom(g), inv(phi12))); check = false) for g in gens(G2)])
+  @hassert :ZZLatWithIsom 1 fqL in G
+  GtoG2 = hom(G, G2, gens(G), gens(G2); check = false)
 
   # This is the associated hermitian O_E-lattice to (L, f): we want to make qL
   # (aka D_L) correspond to the quotient D^{-1}H^#/H by the trace construction,
@@ -407,7 +409,7 @@ function _local_determinants_morphism(Lf::ZZLatWithIsom)
   RmodF, Flog, _ = _get_product_quotient(E, Fdata)
 
   A = elem_type(RmodF)[Flog(Fsharpexp(g)) for g in gens(RmodFsharp)]
-  f = hom(RmodFsharp, RmodF, A)
+  f = hom(RmodFsharp, RmodF, A; check = false)
   FmodFsharp, j = kernel(f)
 
   # Now according to Theorem 6.15 of BH23, it remains to quotient out the image
@@ -418,7 +420,7 @@ function _local_determinants_morphism(Lf::ZZLatWithIsom)
   OK = base_ring(OE)
   UOK, mUOK = unit_group(OK)
 
-  fU = hom(UOEabs, UOK, elem_type(UOK)[mUOK\norm(OE(mUOK(m))) for m in gens(UOK)])
+  fU = hom(UOEabs, UOK, elem_type(UOK)[mUOK\norm(OE(mUOK(m))) for m in gens(UOK)]; check = false)
   KU, jU = kernel(fU)
 
   gene_norm_one = Hecke.NfRelElem[EabstoE(Eabs(mUOEabs(jU(k)))) for k in gens(KU)]
@@ -467,7 +469,8 @@ function _local_determinants_morphism(Lf::ZZLatWithIsom)
   f2 = hom(G2, GSQ, gens(G2), SQtoGSQ.(imgs); check = false)
   f = compose(GtoG2, f2)
 
-  return f
+  @hassert :ZZLatWithIsom 1 isone(f(fqL))
+  return f, GinOqL # Needs the second map to map the kernel of f into OqL
 end
 
 # We check whether for the prime ideal p E_O(L_p) != F(L_p).
@@ -736,7 +739,7 @@ end
 #    exactly what we look for (a unit at P with trace 1);
 #  - p is ramified, and then we cook up a good element. The actual code from
 #    that part is taken from the Sage implementation of Simon Brandhorst
-function _find_rho(P::Hecke.NfRelOrdIdl, e)
+function _find_rho(P::Hecke.NfRelOrdIdl, e::Int)
   OE = order(P)
   E = nf(OE)
   lp = prime_decomposition(OE, minimum(P))

@@ -2,7 +2,7 @@
 CurrentModule = Oscar
 ```
 
-# Quadratic space with isometry
+# Quadratic spaces with isometry
 
 We call *quadratic space with isometry* any pair $(V, f)$ consisting of a
 non-degenerate quadratic space $V$ together with an isometry $f\in O(V)$.
