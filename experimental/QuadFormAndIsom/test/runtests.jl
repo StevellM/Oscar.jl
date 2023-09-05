@@ -269,3 +269,12 @@ end
   @test length(reps) == 1
   @test is_of_same_type(Lf, reps[1])
 end
+
+@testset "Equivariant primitive embeddings" begin
+  B = matrix(QQ, 8, 8, [1 0 0 0 0 0 0 0; 0 1 0 0 0 0 0 0; 0 0 1 0 0 0 0 0; 0 0 0 1 0 0 0 0; 0 0 0 0 1 0 0 0; 0 0 0 0 0 1 0 0; 0 0 0 0 0 0 1 0; 0 0 0 0 0 0 0 1]);
+  G = matrix(QQ, 8, 8, [-2 1 0 0 0 0 0 0; 1 -2 1 0 0 0 0 0; 0 1 -2 1 0 0 0 1; 0 0 1 -2 1 0 0 0; 0 0 0 1 -2 1 0 0; 0 0 0 0 1 -2 1 0; 0 0 0 0 0 1 -2 0; 0 0 1 0 0 0 0 -2]);
+  L = integer_lattice(B, gram = G);
+  f = matrix(QQ, 8, 8, [1 0 0 0 0 0 0 0; 0 1 0 0 0 0 0 0; 0 0 1 0 0 0 0 0; -2 -4 -6 -4 -3 -2 -1 -3; 2 4 6 5 4 3 2 3; -1 -2 -3 -3 -3 -2 -1 -1; 0 0 0 0 1 0 0 0; 1 2 3 3 2 1 0 2]);
+  Lf = integer_lattice_with_isometry(L, f);
+
+end

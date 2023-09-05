@@ -502,6 +502,145 @@ julia> signature_tuple(Lf)
 """
 signature_tuple(Lf::ZZLatWithIsom) = signature_tuple(lattice(Lf))
 
+@doc raw"""
+    is_primary_with_prime(Lf::ZZLatWihtIsom) -> Bool, ZZRingElem
+
+Given a lattice with isometry $(L, f)$, return whether $L$ is primary,
+that is whether $L$ is integral and its discriminant group is a
+$p$-group for some prime number $p$. In case it is, $p$ is also returned as
+second output.
+
+Note that for unimodular lattices, this function returns `(true, 1)`. If the
+lattice is not primary, the second return value is `-1` by default.
+
+# Examples
+```jldoctest
+julia> L = root_lattice(:A, 5);
+
+julia> Lf = integer_lattice_with_isometry(L);
+
+julia> is_primary_with_prime(Lf)
+(false, -1)
+
+julia> genus(Lf)
+Genus symbol for integer lattices
+Signatures: (5, 0, 0)
+Local symbols:
+  Local genus symbol at 2: 1^-4 2^1_7
+  Local genus symbol at 3: 1^-4 3^1
+```
+"""
+is_primary_with_prime(Lf::ZZLatWithIsom) = is_primary_with_prime(lattice(Lf))
+
+@doc raw"""
+    is_primary(Lf::ZZLatWithIsom, p::IntegerUnion) -> Bool
+
+Given a lattice with isometry $(L, f)$ and a prime number $p$,
+return whether $L$ is $p$-primary, that is whether its discriminant group
+is a $p$-group.
+
+# Examples
+```jldoctest
+julia> L = root_lattice(:A, 6);
+
+julia> Lf = integer_lattice_with_isometry(L);
+
+julia> is_primary(Lf, 7)
+true
+
+julia> genus(Lf)
+Genus symbol for integer lattices
+Signatures: (6, 0, 0)
+Local symbols:
+  Local genus symbol at 2: 1^6
+  Local genus symbol at 7: 1^-5 7^-1
+```
+"""
+is_primary(Lf::ZZLatWithIsom, p::IntegerUnion) = is_primary(lattice(Lf), p)
+
+@doc raw"""
+    is_unimodular(Lf::ZZLatWithIsom) -> Bool
+
+Given a lattice with isometry $(L, f)$, return whether `$L$ is unimodular,
+that is whether its discriminant group is trivial.
+
+# Examples
+```jldoctest
+julia> L = root_lattice(:E, 8);
+
+julia> Lf = integer_lattice_with_isometry(L);
+
+julia> is_unimodular(Lf)
+true
+
+julia> genus(Lf)
+Genus symbol for integer lattices
+Signatures: (8, 0, 0)
+Local symbol:
+  Local genus symbol at 2: 1^8
+```
+"""
+is_unimodular(Lf::ZZLatWithIsom) = is_unimodular(lattice(Lf))
+
+@doc raw"""
+    is_elementary_with_prime(Lf::ZZLatWithIsom) -> Bool, ZZRingElem
+
+Given a lattice with isometry $(L, f)$, return whether $L$ is elementary, that is
+whether $L$ is integral and its discriminant group is an elemenentary $p$-group for
+some prime number $p$. In case it is, $p$ is also returned as second output.
+
+Note that for unimodular lattices, this function returns `(true, 1)`. If the lattice
+is not elementary, the second return value is `-1` by default.
+
+# Examples
+```jldoctest
+julia> L = root_lattice(:A, 7);
+
+julia> Lf = integer_lattice_with_isometry(L);
+
+julia> is_elementary_with_prime(Lf)
+(false, -1)
+
+julia> is_primary(Lf, 2)
+true
+
+julia> genus(Lf)
+Genus symbol for integer lattices
+Signatures: (7, 0, 0)
+Local symbol:
+  Local genus symbol at 2: 1^6 8^1_7
+```
+"""
+is_elementary_with_prime(Lf::ZZLatWithIsom) = is_elementary_with_prime(lattice(Lf))
+
+@doc raw"""
+    is_elementary(Lf::ZZLatWithIsom, p::IntegerUnion) -> Bool
+
+Given a lattice with isometry $(L, f)$ and a prime number $p$, return whether
+$L$ is $p$-elementary, that is whether its discriminant group is an elementary
+$p$-group.
+
+# Examples
+```jldoctest
+julia> L = root_lattice(:E, 7);
+
+julia> Lf = integer_lattice_with_isometry(L);
+
+julia> is_elementary(Lf, 3)
+false
+
+julia> is_elementary(Lf, 2)
+true
+
+julia> genus(Lf)
+Genus symbol for integer lattices
+Signatures: (7, 0, 0)
+Local symbol:
+  Local genus symbol at 2: 1^6 2^1_7
+```
+"""
+is_elementary(Lf::ZZLatWithIsom, p::IntegerUnion) = is_elementary(lattice(Lf), p)
+
 ###############################################################################
 #
 #  Constructors
@@ -797,9 +936,37 @@ end
 Given a lattice with isometry $(L, f)$ and a matrix $B$ with rational entries
 defining an $f$-stable sublattice of $L$, return the largest submodule of $L$
 orthogonal to each row of $B$, equipped with the induced action from $f$.
+
+# Examples
+```jldoctest
+julia> L = root_lattice(:A,5);
+
+julia> f = matrix(QQ, 5, 5, [ 1  0  0  0  0;
+                             -1 -1 -1 -1 -1;
+                              0  0  0  0  1;
+                              0  0  0  1  0;
+                              0  0  1  0  0]);
+
+julia> Lf = integer_lattice_with_isometry(L, f);
+
+julia> B = matrix(QQ,3,5,[1 0 0 0 0;
+                          0 0 1 0 1;
+                          0 0 0 1 0])
+[1   0   0   0   0]
+[0   0   1   0   1]
+[0   0   0   1   0]
+
+julia> orthogonal_submodule(Lf, B)
+Integer lattice of rank 2 and degree 5
+  with isometry of finite order 2
+  given by
+  [-1    0]
+  [ 0   -1]
+
+```
 """
 function orthogonal_submodule(Lf::ZZLatWithIsom, B::QQMatrix)
-  @req ncols(B) == degree(L) "The rows of B should represent vectors in the ambient space of Lf"
+  @req ncols(B) == degree(Lf) "The rows of B should represent vectors in the ambient space of Lf"
   B2 = basis_matrix(orthogonal_submodule(lattice(Lf), B))
   return lattice_in_same_ambient_space(Lf, B2; check = false)
 end
@@ -1542,56 +1709,6 @@ function discriminant_representation(L::ZZLat, G::MatrixGroup;
 end
 
 @doc raw"""
-    discriminant_representation_stabilizer(Lf::ZZLatWithIsom,
-                                           G::MatrixGroup;
-                                           ambient_representation::Bool = true,
-                                           check::Bool = true)
-                                                        -> GAPGroupHomomorphism
-
-Given an integer lattice with isometry $(L, f)$ and a group $G$ of isometries
-of $L$, return the orthogonal representation $G(f) \to O(D_L, D_f)$ of the
-centralizer $G(f)$ of $f$ in $G$ on the discriminant group $D_L$ of $L$.
-
-If `ambient_representation` is set to `true`, then the isometries in $G$ are
-considered as matrix representation of their action on the standard basis of
-the ambient space of $L$. Otherwise, they are considered as matrix representation
-of their action on the basis matrix of $L$.
-"""
-function discriminant_representation_centralizer(Lf::ZZLatWithIsom, G::MatrixGroup;
-                                                                    ambient_representation::Bool = true,
-                                                                    check::Bool = true)
-  function my_func(m::QQMatrix, g::MatrixGroupElem)
-    return inv(matrix(g))*m*matrix(g)
-  end
-
-  V = ambient_space(L)
-  if ambient_representation
-    @check all(g -> matrix(g)*gram_matrix(V)*transpose(matrix(g)) == gram_matrix(V), gens(G)) "G does not define a group of isometries of the ambient space of L"
-    f = ambient_isometry(Lf)
-  else
-    @check all( g -> matrix(g)*gram_matrix(L)*transpose(matrix(g)) == gram_matrix(L), gens(G)) "G does not define a group of isometries of L"
-    B = basis_matrix(L)
-    B2 = orthogonal_complement(V, B)
-    C = vcat(B, B2)
-    f = isometry(Lf)
-  end
-
-  Gf = stabilizer(G, QQMatrix[f], my_func)
-  q, fq = discriminant_group(Lf)
-  Oq = orthogonal_group(q)
-  Oqf = centralizer(Oq, Oq(fq))
-  imag_lis = elem_type(Oq)[]
-  for g in gens(Gf)
-    if !ambient_representation
-      g = block_diagonal_matrix(QQMatrix[matrix(g), identity_matrix(QQ, nrows(B2))])
-      g = inv(C)*g*C
-    end
-    push!(imag_lis, Oqf(hom(q, q, TorQuadModuleElem[q(lift(a)*matrix(g)) for a in gens(q)]); check = false))
-  end
-  return hom(Gf, Oqf, imag_lis)
-end
-
-@doc raw"""
     image_centralizer_in_Oq(Lf::ZZLatWithIsom) -> AutomorphismGroup{TorQuadModule},
                                                   GAPGroupHomomorphism
 
@@ -1625,7 +1742,15 @@ julia> order(G)
   if (n in [1, -1]) || (isometry(Lf) == -identity_matrix(QQ, rank(L)))
     # Trivial cases: the lattice has rank 0, or is endowed with +- identity
     return image_in_Oq(L)
-  elseif is_definite(L) 
+  elseif rank(L) == euler_phi(n)
+    # this should also cover the case of rank 1
+    # The image of -id and multiplication by primitive root of unity
+    qL, fqL = discriminant_group(Lf)
+    OqL = orthogonal_group(qL)
+    UL = ZZMatrix[-matrix(one(OqL)), matrix(fqL)]
+    UL = elem_type(OqL)[OqL(m; check = false) for m in UL]
+    return sub(OqL, unique!(UL))
+  elseif is_definite(L) || rank(L) == 2
     # We can compute the orthogonal groups and centralizer with GAP
     OL = orthogonal_group(L)
     f = isometry(Lf)
@@ -1643,14 +1768,8 @@ julia> order(G)
     OqL = orthogonal_group(qL)
     UL = elem_type(OqL)[OqL(m; check = false) for m in UL]
     return sub(OqL, UL)
-  elseif rank(L) == euler_phi(n)
-    # The image of -id and multiplication by primitive root of unity
-    qL, fqL = discriminant_group(Lf)
-    OqL = orthogonal_group(qL)
-    UL = ZZMatrix[-matrix(one(OqL)), matrix(fqL)]
-    UL = elem_type(OqL)[OqL(m; check = false) for m in UL]
-    return sub(OqL, unique!(UL))
   elseif is_of_hermitian_type(Lf)
+    # indefinite of rank bigger or equal to 3
     # We use Hermitian Miranda-Morrison (see [BH23, Part 6])
     dets, j = Oscar._local_determinants_morphism(Lf)
     _, jj = kernel(dets)
@@ -1662,7 +1781,7 @@ julia> order(G)
     # and we split the "largest non trivial exponent of the isometry".
     #
     # TODO: make a "smart search", for instance for some particular stable
-    # sublattices which are definite or for which rank(L) == euler_phi(n) !!!
+    # kernel sublattices of small rank or for which rank(L) == euler_phi(n)
     #
     # We use the similar method as used for extending stabilizers along
     # equivariant primitive extensions as seen in the function
@@ -1675,7 +1794,7 @@ julia> order(G)
     GM, _ = image_centralizer_in_Oq(M)
 
     N = orthogonal_submodule(Lf, basis_matrix(M))
-    qM, fqN = orthogonal_group(N)
+    qN, fqN = discriminant_group(N)
     GN, _ = image_centralizer_in_Oq(N)
 
     phi, HMinqM, HNinqN = glue_map(L, lattice(M), lattice(N); check = false)
@@ -1684,7 +1803,7 @@ julia> order(G)
     # map should be equivariant!
     @hassert :ZZLatWithIsom 1 is_invariant(fqM, HMinqM)
     @hassert :ZZLatWithIsom 1 is_invariant(fqN, HNinqN)
-    @hassert :ZZLatWithIsom 1 compose(restrict_automorphism(fqM, HMinqM), phi) == compose(phi, restrict_automorphism(fqN, HNinqN))
+    @hassert :ZZLatWithIsom 1 matrix(compose(restrict_automorphism(fqM, HMinqM), phi)) == matrix(compose(phi, restrict_automorphism(fqN, HNinqN)))
 
     HM = domain(HMinqM)
     OHM = orthogonal_group(HM)
@@ -1696,14 +1815,14 @@ julia> order(G)
     HMinD = compose(HMinqM, qMinD)
     HNinD = compose(HNinqN, qNinD)
 
-    stabM = stabilizer(GM, HMinqM)
-    stabN = stabilizer(GN, HNinqN)
+    stabM, _ = stabilizer(GM, HMinqM)
+    stabN, _ = stabilizer(GN, HNinqN)
 
     actM = hom(stabM, OHM, elem_type(OHM)[OHM(restrict_automorphism(x, HMinqM)) for x in gens(stabM)])
     actN = hom(stabN, OHN, elem_type(OHN)[OHN(restrict_automorphism(x, HNinqN)) for x in gens(stabN)])
 
     _, _, graph = _overlattice(phi, HMinD, HNinD, isometry(M), isometry(N); same_ambient = true)
-    disc, stab = _glue_stabilizers(phi, actM, actN, qMinD, qNinD, graph)
+    disc, stab = _glue_stabilizers(phi, actM, actN, OqMinOD, OqNinOD, graph)
     qL, fqL = discriminant_group(Lf)
     OqL = orthogonal_group(qL)
     phi = hom(qL, disc, TorQuadModuleElem[disc(lift(x)) for x in gens(qL)])

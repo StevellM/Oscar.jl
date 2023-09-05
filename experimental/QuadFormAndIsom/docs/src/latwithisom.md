@@ -80,10 +80,15 @@ discriminant(::ZZLatWithIsom)
 genus(::ZZLatWithIsom)
 gram_matrix(::ZZLatWithIsom)
 is_definite(::ZZLatWithIsom)
+is_elementary(::ZZLatWithIsom, ::IntegerUnion)
+is_elementary_with_prime(::ZZLatWithIsom)
 is_even(::ZZLatWithIsom)
 is_integral(::ZZLatWithIsom)
+is_primary(::ZZLatWithIsom, ::IntegerUnion)
+is_primary_with_prime(::ZZLatWithIsom)
 is_positive_definite(::ZZLatWithIsom)
 is_negative_definite(::ZZLatWithIsom)
+is_unimodular(::ZZLatWithIsom)
 minimum(::ZZLatWithIsom)
 minimal_polynomial(::ZZLatWithIsom)
 norm(::ZZLatWithIsom)
@@ -182,16 +187,11 @@ For an implementation of the regular Miranda-Morisson theory, we refer to the
 function `image_in_Oq` which actually computes the image of
 $\pi$ in both the definite and the indefinite case.
 
-We will see later in the section about primitive embeddings that one can compute
-$G_{L,f}$ by induction in some particular cases arising from equivariant
-primitive embeddings of lattices with isometries.
-
-More generally, for a subgroup $G$ of $O(L)$, we have implemented functions
-to compute the images of $G$ and of the stabilizer $G(f)$ in $O(D_L)$:
+More generally, for a subgroup $G$ of $O(L)$, we have implemented a function
+which computes the natural discriminant representation $G \to O(D_L)$:
 
 ```@docs
 discriminant_representation(::ZZLat, ::MatrixGroup)
-discriminant_representation_stabilizer(::ZZLatWithIsom, ::MatrixGroup)
 ```
 
 We will see later in the section about enumeration of lattices with isometry

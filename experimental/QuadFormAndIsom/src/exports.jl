@@ -5,7 +5,6 @@ export admissible_equivariant_primitive_extensions
 export admissible_triples
 export ambient_isometry
 export discriminant_representation
-export discriminant_representation_stabilizer
 export enumerate_classes_of_lattices_with_isometry
 export equivariant_primitive_embeddings
 export equivariant_primitive_extensions

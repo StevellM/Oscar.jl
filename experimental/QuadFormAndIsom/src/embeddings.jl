@@ -1014,10 +1014,10 @@ function equivariant_primitive_extensions(M::ZZLatWithIsom,
     OD = orthogonal_group(D)
   end
 
-  subsM = _classes_automorphic_subgroups(qM, GM, H, fqM)
+  subsM = _classes_automorphic_subgroups(qM, GM, H; f = fqM)
   isempty(subsM) && return results
 
-  subsN = _classes_automorphic_subgroups(qN, GN, rescale(H, -1), fqN)
+  subsN = _classes_automorphic_subgroups(qN, GN, rescale(H, -1); f = fqN)
   isempty(subsN) && return results
 
   for H1 in subsM, H2 in subsN
@@ -1071,7 +1071,7 @@ function equivariant_primitive_extensions(M::ZZLatWithIsom,
         @hassert :ZZLatWithIsom 1 N == N2
       else
         M2 = lattice_in_same_ambient_space(Lf, hcat(basis_matrix(M), zero_matrix(QQ, rank(M), degree(N))))
-        N2 = lattice_in_same_ambient_space(Lf, hcat(zero_matrix(QQ, rank(M), degree(N)), basis_matrix(N)))
+        N2 = lattice_in_same_ambient_space(Lf, hcat(zero_matrix(QQ, rank(N), degree(M)), basis_matrix(N)))
         @hassert :ZZLatWithIsom 1 genus(M) == genus(M2)
         @hassert :ZZLatWithIsom 1 genus(N) == genus(N2)
       end
@@ -1157,7 +1157,7 @@ function equivariant_primitive_extensions(M::ZZLatWithIsom,
   @req is_definite(N) "Only available for definite complement"
   @req is_even(M) && is_even(N) "Only implemented for pairs of even integer lattices"
 
-  same_ambient = ambient_space(lattice(M)) === ambient_space(lattice(N))
+  same_ambient = ambient_space(lattice(M)) === ambient_space(N)
 
   qM, fqM = discriminant_group(M)
   if classification == :emb
@@ -1190,7 +1190,7 @@ function equivariant_primitive_extensions(M::ZZLatWithIsom,
     OD = orthogonal_group(D)
   end
 
-  subsM = _classes_automorphic_subgroups(qM, GM, H, fqM)
+  subsM = _classes_automorphic_subgroups(qM, GM, H; f = fqM)
   isempty(subsM) && return false, results
 
   subsN = _classes_automorphic_subgroups(qN, GN, rescale(H, -1))
@@ -1234,7 +1234,7 @@ function equivariant_primitive_extensions(M::ZZLatWithIsom,
 
       classification == :none && return true, results
 
-      fqN = imN\(fHN)
+      fqN = actN\(fHN)
       fN = discN\fqN
 
       if classification == :first
@@ -1248,13 +1248,13 @@ function equivariant_primitive_extensions(M::ZZLatWithIsom,
           @hassert :ZZLatWithIsom 1 N == N2
         else
           M2 = lattice_in_same_ambient_space(Lf, hcat(basis_matrix(M), zero_matrix(QQ, rank(M), degree(N))))
-          N2 = lattice_in_same_ambient_space(Lf, hcat(zero_matrix(QQ, rank(M), degree(N)), basis_matrix(N)))
+          N2 = lattice_in_same_ambient_space(Lf, hcat(zero_matrix(QQ, rank(N), degree(M)), basis_matrix(N)))
           @hassert :ZZLatWithIsom 1 genus(M) == genus(M2)
           @hassert :ZZLatWithIsom 1 genus(N) == genus(N2)
         end
 
         if compute_bar_Gf
-          _GN, _ = discN(centralizer(ON, fN))
+          _GN, _ = discN(centralizer(ON, fN)[1])
           _GN, _ = stabilizer(_GN, HNinqN)
           _actN = hom(_GN, OHN, elem_type(OHN)[OHN(restrict_automorphism(x, HNinqN; check = false); check = false) for x in gens(_GN)])
           disc, stab = _glue_stabilizers(phig, actM, actN, OqMinOD, OqNinOD, graph)
@@ -1297,13 +1297,13 @@ function equivariant_primitive_extensions(M::ZZLatWithIsom,
           @hassert :ZZLatWithIsom 1 N == N2
         else
           M2 = lattice_in_same_ambient_space(Lf, hcat(basis_matrix(M), zero_matrix(QQ, rank(M), degree(N))))
-          N2 = lattice_in_same_ambient_space(Lf, hcat(zero_matrix(QQ, rank(M), degree(N)), basis_matrix(N)))
+          N2 = lattice_in_same_ambient_space(Lf, hcat(zero_matrix(QQ, rank(N), degree(M)), basis_matrix(N)))
           @hassert :ZZLatWithIsom 1 genus(M) == genus(M2)
           @hassert :ZZLatWithIsom 1 genus(N) == genus(N2)
         end
 
         if compute_bar_Gf
-          _GN, _ = discN(centralizer(ON, b))
+          _GN, _ = discN(centralizer(ON, b)[1])
           _GN, _ = stabilizer(_GN, HNinqN)
           _actN = hom(_GN, OHN, elem_type(OHN)[OHN(restrict_automorphism(x, HNinqN; check = false); check = false) for x in gens(_GN)])
           disc, stab = _glue_stabilizers(phig, actM, _actN, OqMinOD, OqNinOD, graph)
@@ -1478,7 +1478,7 @@ function equivariant_primitive_embeddings(G::ZZGenus,
   @req (posL-posM >= 0 && negL-negM >= 0) "Impossible embedding"
   @req (posL-posM)*(negL-negM) == 0 "Only available for definite complements"
 
-  results = Tuple{ZZLatWith, ZZLatWith, ZZLatWith}[]
+  results = Tuple{ZZLatWithIsom, ZZLatWithIsom, ZZLatWithIsom}[]
   if rank(M) == rank(G)
     genus(M) != G && return false, results
     N = integer_lattice_with_isometry(orthogonal_submodule(M, M))
@@ -1841,16 +1841,6 @@ function admissible_equivariant_primitive_extensions(A::ZZLatWithIsom,
       phi2 = hom(qC2, disc, TorQuadModuleElem[disc(lift(x)) for x in gens(qC2)])
       @hassert :ZZLatWithIsom 1 is_isometry(phi2)              # In fact they are the same module so phi2, mathematically, is the identity.
 
-      # So now this new integer lattice with isometry `(C2, fC2)` is a good
-      # output. Just remain to compute GC2 in a smart way.
-      geneOSA =  AutomorphismGroupElem{TorQuadModule}[OSA(compose(phig, compose(hom(g1), inv(phig)))) for g1 in unique(gens(imB))]
-      im2_phi, _ = sub(OSA, geneOSA)
-      im3, _, _ = intersect(imA, im2_phi)
-      stab = AutomorphismGroupElem{TorQuadModule}[OqAinOD(actA\x) * OqBinOD(actB\(imB(compose(inv(phig), compose(hom(x), phig))))) for x in gens(im3)]
-      union!(stab, kerA)
-      union!(stab, kerB)
-      stab = TorQuadModuleMor[restrict_automorphism(g, j) for g in stab]
-      stab = TorQuadModuleMor[hom(disc, disc, [disc(lift(g(perp(lift(l))))) for l in gens(disc)]) for g in stab]
       stab = sub(OqC2, elem_type(OqC2)[OqC2(compose(phi2, compose(g, inv(phi2))); check = false) for g in stab])
 
       # If we have done good things, the action of fC2 on qC2 should centralize
