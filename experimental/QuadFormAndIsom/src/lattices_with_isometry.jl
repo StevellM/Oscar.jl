@@ -2166,7 +2166,7 @@ end
 
 @doc raw"""
     invariant_coinvariant_pair(L::ZZLat, G::MatrixGroup;
-                                         ambient_representation::Bool = true)
+                                         ambient_representation::Bool = false)
                                                    -> ZZLat, ZZLat, MatrixGroup
 
 Given an integer lattice $L$ and a group $G$ of isometries of $L$, return
@@ -2201,7 +2201,7 @@ with gram matrix
 [6]
 ```
 """
-function invariant_coinvariant_pair(L::ZZLat, G::MatrixGroup; ambient_representation::Bool = true)
+function invariant_coinvariant_pair(L::ZZLat, G::MatrixGroup; ambient_representation::Bool = false)
   F = invariant_lattice(L, G; ambient_representation)
   C = orthogonal_submodule(L, F)
   if !ambient_representation
@@ -2222,7 +2222,7 @@ function invariant_coinvariant_pair(L::ZZLat, G::MatrixGroup; ambient_representa
       push!(gene, matrix(g))
     end
   end
-  return F, C, matrix_group(gene)
+  return F, C, gene
 end
 
 ##############################################################################

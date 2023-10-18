@@ -22,10 +22,10 @@ function automorphism_group(G::GrpAbFinGen)
 end
 
 
-function apply_automorphism(f::AutGrpAbTorElem, x::AbTorElem, check::Bool=true)
+function apply_automorphism(f::AutGrpAbTorElem, x::AbTorElem, check::Bool=false)
   aut = parent(f)
   if check
-    @assert parent(x) == aut.G "Not in the domain of f!"
+    @assert parent(x) === domain(aut) "Not in the domain of f!"
   end
   to_gap = get_attribute(aut, :to_gap)
   to_oscar = get_attribute(aut, :to_oscar)

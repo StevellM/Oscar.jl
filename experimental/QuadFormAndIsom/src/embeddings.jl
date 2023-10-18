@@ -927,7 +927,14 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(Vinq::TorQu
   # K is H0 but seen a subvector space of Vp (which is V)
   k, K = kernel(VptoQp.matrix; side = :left)
   gene_H0p = elem_type(Vp)[Vp(vec(collect(K[i,:]))) for i in 1:k]
-  orb_and_stab = orbit_representatives_and_stabilizers(MGp, g-k)
+  if compute_stab
+    orb_and_stab = try Oscar.orbit_representatives_and_stabilizers_magma(MGp, g-k)
+                   catch e
+                   orbit_representatives_and_stabilizers(MGp, g-k)
+                   end
+  else
+    orb_and_stab = Oscar.orbit_representatives(MGp, g-k, G)
+  end
 
   for (orb, stab) in orb_and_stab
     i = orb.map
@@ -1907,7 +1914,6 @@ function _find_admissible_gluing(SAinqA::TorQuadModuleMor,
   rA = _rho_functor(qA, p, l+1; quad = spec)
   rB = _rho_functor(qB, p, l+1; quad = spec)
   @hassert :ZZLatWithIsom modulus_quadratic_form(rA) == modulus_quadratic_form(rB)
-
   rAtoSA = hom(rA, SA, elem_type(SA)[SA(QQ(p^l)*lift(a)) for a in gens(rA)])
   HA, HAinSA = sub(SA, rAtoSA.(gens(rA)))
   rAtoHA = hom(rA, HA, elem_type(HA)[HAinSA\(rAtoSA(a)) for a in gens(rA)])

@@ -465,7 +465,7 @@ function representatives_of_hermitian_type(Lf::ZZLatWithIsom, m::Int = 1, fix_ro
     @vprintln :ZZLatWithIsom 1 "Order smaller than 3"
     f = (-1)^(nm+1)*identity_matrix(QQ, rk)
     G = genus(Lf)
-    repre = representatives(G)
+    repre = enumerate_lattice_in_genus(G)
     @vprintln :ZZLatWithIsom 1 "$(length(repre)) representative(s)"
     while !is_empty(repre)
       LL = pop!(repre)

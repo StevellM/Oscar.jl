@@ -91,6 +91,7 @@ export LinearHalfspace
 export LinearHyperplane
 export LinearProgram, linear_program
 export localization
+export MagmaCall
 export MPolyDecRing
 export MPolyDecRingElem
 export MPolyIdeal
@@ -780,6 +781,7 @@ export is_inverse_of
 export is_invertible
 export is_irreducible
 export is_isolated_singularity
+export is_isometric_smart
 export is_isomorphic
 export is_isomorphic_to_alternating_group, has_is_isomorphic_to_alternating_group, set_is_isomorphic_to_alternating_group
 export is_isomorphic_to_symmetric_group, has_is_isomorphic_to_symmetric_group, set_is_isomorphic_to_symmetric_group
@@ -862,6 +864,7 @@ export is_zero
 export is_zm_graded
 export isfinite
 export isometry_group
+export isometry_group_order
 export isomorphic_matroid
 export isomorphism
 export isone
@@ -917,6 +920,7 @@ export linear_hyperplane
 export linear_inequality_matrix
 export linear_span
 export linear_symmetries
+export oscar_line_orbits
 export link_subcomplex
 export load
 export load_lp

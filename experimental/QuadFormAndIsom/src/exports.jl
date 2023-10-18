@@ -7,6 +7,7 @@ export ambient_isometry
 export discriminant_representation
 export enumerate_classes_of_lattices_with_isometry
 export equivariant_primitive_extensions
+export enumerate_lattice_in_genus
 export image_centralizer_in_Oq
 export integer_lattice_with_isometry
 export invariant_coinvariant_pair

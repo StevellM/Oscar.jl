@@ -924,27 +924,27 @@ false
 """
 is_semiregular(G::PermGroup, L::AbstractVector{Int} = 1:degree(G)) = GAPWrap.IsSemiRegular(G.X, GapObj(L))
 
-"""
-    orbit_representatives_and_stabilizers(G::MatrixGroup{E}, k::Int) where E <: FinFieldElem
-
-Return a vector of pairs `(orb, stab)` where `orb` runs over representatives
-of orbits of `G` on the `k`-dimensional subspaces of `F^n`,
-where `G` is a subgroup of `general_linear_group(F, n)`.
-
-# Examples
-```jldoctest
-julia> G = orthogonal_group(1, 4, GF(3))
-GO+(4,3)
-
-julia> res = orbit_representatives_and_stabilizers(G, 1);
-
-julia> length(res)
-3
-
-julia> print(sort([index(G, stab) for (U, stab) in res]))
-ZZRingElem[12, 12, 16]
-```
-"""
+#"""
+#    orbit_representatives_and_stabilizers(G::MatrixGroup{E}, k::Int) where E <: FinFieldElem
+#
+#Return a vector of pairs `(orb, stab)` where `orb` runs over representatives
+#of orbits of `G` on the `k`-dimensional subspaces of `F^n`,
+#where `G` is a subgroup of `general_linear_group(F, n)`.
+#
+## Examples
+#```jldoctest
+#julia> G = orthogonal_group(1, 4, GF(3))
+#GO+(4,3)
+#
+#julia> res = orbit_representatives_and_stabilizers(G, 1);
+#
+#julia> length(res)
+#3
+#
+#julia> print(sort([index(G, stab) for (U, stab) in res]))
+#ZZRingElem[12, 12, 16]
+#```
+#"""
 function orbit_representatives_and_stabilizers(G::MatrixGroup{E}, k::Int) where E <: FinFieldElem
   F = base_ring(G)
   n = degree(G)
@@ -957,3 +957,78 @@ function orbit_representatives_and_stabilizers(G::MatrixGroup{E}, k::Int) where 
   orbreps2 = [sub(V, [V(v) for v in bas])[1] for bas in orbreps1]
   return [(orbreps2[i], stabs[i]) for i in 1:length(stabs)]
 end
+
+function orbit_representatives_and_stabilizers_magma(G::MatrixGroup{E}, k::Int) where E <: FinFieldElem
+  g = gens(G)
+  d = degree(G)
+  F = base_ring(G)
+  V = vector_space(F, d)
+  p, e = characteristic(F), degree(F)
+  str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
+  for m in g
+    mm = "[" * split(string([m[i,j] for i in 1:nrows(m) for j in 1:ncols(m)]), '[')[2]
+    str *= mm
+    str *= ", "
+  end
+  str = str[1:end-2]*" >; O := OrbitsOfSpaces(G, $k); S1 := Sprint([[[[M[j,k] : k in [1..NumberOfColumns(M)]] : j in [1..NumberOfRows(M)]] : M in Generators(Stabilizer(G, L[2]))] : L in O]); S2 := Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[2])] : L in O]); [S1, S2]"
+  o = MagmaCall.interact() do stdout
+    MagmaCall.putcmd(stdout, str)
+    MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+  end
+  L1, L2 = o
+  stabs = Vector{elem_type(G)}[elem_type(G)[G(matrix(F, d, d, reduce(vcat, v))) for v in bas] for bas in L1]
+  stabs = [sub(G, bas)[1] for bas in stabs]
+  orb = Vector{elem_type(V)}[elem_type(V)[V(F.(v)) for v in bas] for bas in L2]
+  orb = [sub(V, bas)[1] for bas in orb]
+  return [(orb[i], stabs[i]) for i in 1:length(orb)]
+end
+
+function oscar_line_orbits(G::MatrixGroup{E}) where E <: FinFieldElem
+  g = gens(G)
+  d = degree(G)
+  F = base_ring(G)
+  V = vector_space(F, d)
+  p, e = characteristic(F), degree(F)
+  str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
+  for m in g
+    mm = "[" * split(string([m[i,j] for i in 1:nrows(m) for j in 1:ncols(m)]), '[')[2]
+    str *= mm
+    str *= ", "
+  end
+  str = str[1:end-2]*" >; O := OrbitsOfSpaces(G, 1); Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[2])] : L in O])"
+  o = MagmaCall.interact() do stdout
+    MagmaCall.putcmd(stdout, str)
+    MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+  end
+  orb = Vector{elem_type(F)}[F.(bas[1]) for bas in o]
+  #str = str[1:end-2]*" >; O := LineOrbits(G); Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[1])] : L in O])"
+  #o = MagmaCall.interact() do stdout
+  #  MagmaCall.putcmd(stdout, str)
+  #  MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+  #end
+  #orb = Vector{elem_type(F)}[F.(bas[1]) for bas in o]
+  return orb
+end
+
+function orbit_representatives(G::MatrixGroup{E}, k::Int, O) where E <: FinFieldElem
+  g = gens(G)
+  d = degree(G)
+  F = base_ring(G)
+  V = VectorSpace(F, d)
+  p, e = characteristic(F), degree(F)
+  str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
+  for m in g
+    mm = "[" * split(string([m[i,j] for i in 1:nrows(m) for j in 1:ncols(m)]), '[')[2]
+    str *= mm
+    str *= ", "
+  end
+  str = str[1:end-2]*" >; O := OrbitsOfSpaces(G, $k); Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[2])] : L in O])"
+  o = MagmaCall.interact() do stdout
+    MagmaCall.putcmd(stdout, str)
+    MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+  end
+  orb = Vector{elem_type(V)}[elem_type(V)[V(F.(v)) for v in bas] for bas in o]
+  orb = [(sub(V, bas)[1], O) for bas in orb]
+  return orb
+end
+

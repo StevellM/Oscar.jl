@@ -14,6 +14,7 @@ import AlgebraicSolving
 import Polymake
 import GAP
 import Hecke
+import MagmaCall
 import Nemo
 import Singular
 
