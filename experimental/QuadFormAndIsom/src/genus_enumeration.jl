@@ -185,11 +185,14 @@ function _mat_in_str(M::fmpq_mat)
 end
 
 function enumerate_lattice_in_genus(G::ZZGenus, res = ZZLat[])
+  if !is_definite(G)
+    return representatives(G)
+  end
   if is_empty(res)
     push!(res, representative(G))
-    @info "First representative computed"
-    write(f, "reps = ZZLat[integer_lattice(;gram = $(_mat_in_str(gram_matrix(res[1])))), \n")
-    @info "Written in the file"
+    #@info "First representative computed"
+    #write(f, "reps = ZZLat[integer_lattice(;gram = $(_mat_in_str(gram_matrix(res[1])))), \n")
+    #@info "Written in the file"
     L = representative(G)
     res = ZZLat[L]
     is_one(isometry_group_order(L)*mass(G)) && return res
@@ -198,29 +201,29 @@ function enumerate_lattice_in_genus(G::ZZGenus, res = ZZLat[])
     @assert genus(L) == G
   end
   n = rank(L)
-  #Lq = Hecke._to_number_field_lattice(L)
+  Lq = Hecke._to_number_field_lattice(L)
   __mass = mass(G)
-  #K = base_field(L)
-  #R = base_ring(Lq)
+  K = base_field(L)
+  R = base_ring(Lq)
   bps = bad_primes(G)
   p_lis = eltype(bps)[p for p in Hecke.primes_up_to(7) if !(p in bps)]
-  #p = Hecke._smallest_norm_good_prime(Lq)
-  #spinor_genera = Hecke.spinor_genera_in_genus(Lq, typeof(p)[p])
-  #@info "$(length(spinor_genera)) spinor genera"
+  p = Hecke._smallest_norm_good_prime(Lq)
+  spinor_genera = Hecke.spinor_genera_in_genus(Lq, typeof(p)[p])
+  @info "$(length(spinor_genera)) spinor genera"
 
   _mass = __mass
-  #for LL in spinor_genera
-    #LL = lll(Hecke._to_ZLat(LL, K = QQ))
-    #local found::fmpq
-    #found = sum(1//isometry_group_order(LL)
+  for LL in spinor_genera
+    LL = lll(Hecke._to_ZLat(LL, K = QQ))
+    local found::fmpq
+    found = sum(1//isometry_group_order(LL))
     found = sum(QQFieldElem[1//(isometry_group_order(LL)) for LL in res])
     missing_mass = Ref{fmpq}(_mass- found)
-    #new_lat = ZZLat[LL]
+    new_lat = ZZLat[LL]
     while !is_zero(missing_mass[])
       @info "Try new lattice"
 
       callback = function(_res, M)
-        keep = all(W -> !is_isometric_smart(W, M)[1], union(_res, res))
+        keep = all(W -> !is_isometric_smart(W, M)[1], union(_res, new_lat))
         return keep, true
       end
 
@@ -231,18 +234,18 @@ function enumerate_lattice_in_genus(G::ZZGenus, res = ZZLat[])
         missing_mass = Ref{fmpq}(_mass-found)
         perc = Float64(found//_mass) * 100
         append!(res, N)
-        #append!(new_lat, N) 
-        for NN in N
-          str = "integer_lattice(; gram = $(_mat_in_str(gram_matrix(lll(lll(NN)))))),\n"
-          open("/home/lehrstuhl/ag-gekeler/muller/Documents/OG10-bir/gen_hard_2.jl", "a") do f
-            write(f, str)
-          end
-        end
-        @info "New lattices written"
+        append!(new_lat, N) 
+        #for NN in N
+        #  str = "integer_lattice(; gram = $(_mat_in_str(gram_matrix(lll(lll(NN)))))),\n"
+        #  open("/home/lehrstuhl/ag-gekeler/muller/Documents/OG10-bir/gen_hard_2.jl", "a") do f
+        #    write(f, str)
+        #  end
+        #end
+        #@info "New lattices written"
         @info "Lattices: $(length(res)), Target mass: $(_mass). missing: $(missing_mass[]) ($(100-perc)%)"
       end
     end
-  #end
+  end
   return res
 end
 
