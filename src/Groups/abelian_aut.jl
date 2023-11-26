@@ -60,8 +60,10 @@ end
 ###############################################################################
 
 function _isomorphic_gap_group(A::GrpAbFinGen; T = PcGroup)
-  iso = isomorphism(T, A)
-  iso2 = inv(iso)
+  As, phi = snf(A)
+  _iso = isomorphism(T, As)
+  iso = compose(inv(phi), _iso)
+  iso2 = compose(inv(_iso), phi)
   return codomain(iso), iso, iso2
 end
 
@@ -492,61 +494,68 @@ end
 
 ###############################################################################
 #
-#  Stabilizers
+#  Orbit and stabilizers of subgroups
 #
 ###############################################################################
 
-function _stabilizer_p_elementary_group(G::AutomorphismGroup{GrpAbFinGen},
-                                        i::GrpAbFinGenMap,
-                                        p::IntegerUnion)
-  order(domain(i)) == 1 && return G, id_hom(G)
-  K = GF(p)
-  q = GAP.Obj(p)
-  H = domain(i)
-  Hs, HstoH = snf(H)
-  A = domain(G)
-  As, AstoA = snf(A)
-  AtoAs = inv(AstoA)
-  m1 = map_entries(K, matrix(AstoA))
-  m2 = map_entries(K, matrix(AtoAs))
-  iH = compose(HstoH, compose(i, AtoAs))
-  n = ngens(As)
-  V = GAP.Globals.GF(q)^n
-  jK = Oscar._iso_oscar_gap(K)
-  gensG = gens(G)
-  gensMG = dense_matrix_type(K)[map_entries(K, matrix(compose(AstoA, compose(hom(g), AtoAs)))) for g in gensG]
-  unique!(gensMG)
-  MG = matrix_group(gensMG)
-  println(gens(MG))
-  _bas = GAP.GapObj([GAP.GapObj(vec(GAP.FFE[jK(K(b)) for b in iH(a).coeff])) for a in gens(Hs)])
-  bas = GAP.Globals.BasisVectors(GAP.Globals.Basis(GAP.Globals.Subspace(V, _bas)))
-  println(bas)
-  stab, _ = Oscar._as_subgroup(MG, GAP.Globals.Stabilizer(MG.X, bas, GAP.Globals.OnSubspacesByCanonicalBasis))
-  return sub(G, elem_type(G)[G(lift(m2*matrix(g)*m1)) for g in gens(stab)])
+function stabilizer(O::AutomorphismGroup{TorQuadModule}, i::TorQuadModuleMor)
+  to_gap = get_attribute(O, :to_gap)
+  Agap = codomain(to_gap)
+  A2gap, _ = sub(Agap, elem_type(Agap)[to_gap(i(a)) for a in gens(domain(i))])
+  return stabilizer(O, A2gap.X, on_subgroups)
 end
-
-function _stabilizer_p_group(G::AutomorphismGroup{GrpAbFinGen},
-                             i::GrpAbFinGenMap,
-                             p::IntegerUnion)
-  order(domain(i)) == 1 && return G, id_hom(G)
-  A = domain(G)
-  ed = elementary_divisors(A)
-  ed[end] == p && return _stabilizer_p_elementary_group(G, i, p)
-  H, inj = sub(A, elem_type(A)[divexact(order(g), p)*g for g in gens(A) if !(order(g)==1)])
-  _, iH = inj\(intersect(domain(i), H))
-  GG, resj = restrict_automorphism_group(G, inj; check = false)
-  stabj, _ = _stabilizer_p_elementary_group(GG, iH, p)
-  stabH = resj\stabj
-
-  K, proj = quo(G, H)
-  OK = orthogonal_group(K)
-  gensH = gens(stabH)
-  _gensGK = GrpAbFinGenMap[hom(K, K, elem_type(K)[proj(g(proj\a)) for a in gens(K)]) for g in gensH]
-  gensGK = elem_type(OK)[OK(matrix(g)) for g in _gensGK]
-  GK, _ = sub(OK, gensGK)
-  sHtoGK = hom(stabH, GH, gensH, gensGH; check = false)
-  _, iK = proj(domain(i))
-  _stabK, _ = _stabilizer_p_group(GK, iK, p)
-  return sHtoGK\(_stabK)
   
-end
+
+#function _stabilizer_p_elementary_group(G::AutomorphismGroup{GrpAbFinGen},
+#                                        i::GrpAbFinGenMap,
+#                                        p::IntegerUnion)
+#  order(domain(i)) == 1 && return G, id_hom(G)
+#  K = GF(p)
+#  q = GAP.Obj(p)
+#  H = domain(i)
+#  Hs, HstoH = snf(H)
+#  A = domain(G)
+#  As, AstoA = snf(A)
+#  AtoAs = inv(AstoA)
+#  m1 = map_entries(K, matrix(AstoA))
+#  m2 = map_entries(K, matrix(AtoAs))
+#  iH = compose(HstoH, compose(i, AtoAs))
+#  n = ngens(As)
+#  V = GAP.Globals.GF(q)^n
+#  jK = Oscar._iso_oscar_gap(K)
+#  gensG = gens(G)
+#  gensMG = dense_matrix_type(K)[map_entries(K, matrix(compose(AstoA, compose(hom(g), AtoAs)))) for g in gensG]
+#  unique!(gensMG)
+#  MG = matrix_group(gensMG)
+#  _bas = GAP.GapObj([GAP.GapObj(vec(GAP.FFE[jK(K(b)) for b in iH(a).coeff])) for a in gens(Hs)])
+#  bas = GAP.Globals.BasisVectors(GAP.Globals.CanonicalBasis(GAP.Globals.Subspace(V, _bas)))
+#  stab, _ = Oscar._as_subgroup(MG, GAP.Globals.Stabilizer(MG.X, bas, GAP.Globals.OnSubspacesByCanonicalBasis))
+#  return sub(G, elem_type(G)[G(lift(m2*matrix(g)*m1)) for g in gens(stab)])
+#end
+#
+#function _stabilizer_p_group(G::AutomorphismGroup{GrpAbFinGen},
+#                             i::GrpAbFinGenMap,
+#                             p::IntegerUnion)
+#  order(domain(i)) == 1 && return G, id_hom(G)
+#  A = domain(G)
+#  ed = copy(elementary_divisors(A))
+#  ed[end] == p && return _stabilizer_p_elementary_group(G, i, p)
+#  H, inj = sub(A, divexact(ed[end], p))
+#  _, iH = inj\(intersect(domain(i), H))
+#  println(snf(domain(iH))[1])
+#  GG, resj = restrict_automorphism_group(G, inj; check = false)
+#  stabj, _ = _stabilizer_p_elementary_group(GG, iH, p)
+#  stabH, _ = resj\stabj
+#
+#  K, proj = quo(A, H)
+#  OK = automorphism_group(K)
+#  gensH = gens(stabH)
+#  _gensGK = GrpAbFinGenMap[hom(K, K, elem_type(K)[proj(g(proj\a)) for a in gens(K)]) for g in gensH]
+#  gensGK = elem_type(OK)[OK(matrix(g)) for g in _gensGK]
+#  GK, _ = sub(OK, gensGK)
+#  sHtoGK = hom(stabH, GK, gensH, gensGK; check = false)
+#  _, iK = proj(domain(i))
+#  _stabK, _ = _stabilizer_p_group(GK, iK, p)
+#  return sHtoGK\(_stabK)
+#  
+#end

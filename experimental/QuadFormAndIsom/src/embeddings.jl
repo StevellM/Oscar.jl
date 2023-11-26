@@ -219,25 +219,6 @@ end
 #
 ###############################################################################
 
-# T is a submodule of the domain q of g, and the function return the submodule
-# g(T) of q (which is isomorphic to T as torsion quadratic module by definition
-# of g).
-function _on_subgroups(T::TorQuadModule, g::AutomorphismGroupElem)
-  q = domain(parent(g))
-  gene = elem_type(q)[g(q(lift(t))) for t in gens(T)]
-  return sub(q, gene)[1]
-end
-
-# Compute stabilizer of a subgroup of a `TorQuadModule` under the action by
-# automorphisms.
-function stabilizer(O::AutomorphismGroup{TorQuadModule}, i::TorQuadModuleMor)
-  @req domain(O) === codomain(i) "Incompatible arguments"
-  q = domain(O)
-  N, _ = sub(q, i.(gens(domain(i))))
-  stab, _ = stabilizer(O, N, _on_subgroups)
-  return sub(O, elem_type(O)[O(h) for h in gens(stab)])
-end
-
 # Given an embedding of an `(O, f)`-stable finite quadratic module `V` of `q`,
 # compute representatives of `O`-orbits of `f`-stable submodules of `V` of order
 # `ord`. If `compute_stab = true`, then the stabilizers in `O` is also computed.
@@ -267,17 +248,21 @@ function _subgroups_orbit_representatives_and_stabilizers(Vinq::TorQuadModuleMor
     filter!(s -> is_invariant(fV, s[2]), subs)
   end
 
-  subs = TorQuadModule[s[1] for s in subs]
-  m = gset(O, _on_subgroups, subs)
+  to_gap = get_attribute(O, :to_gap)
+  to_oscar = get_attribute(O, :to_oscar)
+
+  qgap = codomain(to_gap)
+  sgap = typeof(qgap)[sub(qgap, elem_type(qgap)[to_gap(s[2](a)) for a in gens(s[1])])[1] for s in subs]
+  m = gset(O, on_subgroups, sgap)
   orbs = orbits(m)
   for orb in orbs
-    rep = representative(orb)
+    _repgap = representative(orb)
+    _, rep = sub(q, TorQuadModuleElem[to_oscar(qgap(a.X)) for a in gens(_repgap)])
     if compute_stab
-      stab, _ = stabilizer(O, rep, _on_subgroups)
+      stab, _ = stabilizer(O, rep)
     else
       stab = O
     end
-    _, rep = sub(q, TorQuadModuleElem[q(lift(g)) for g in gens(rep)])
     push!(res, (rep, stab))
   end
   return res
@@ -296,7 +281,7 @@ function _cokernel_as_Fp_vector_space(HinV::TorQuadModuleMor, p::IntegerUnion)
 
   n = ngens(V)
   F = GF(p)
-  Vp = VectorSpace(F, n)
+  Vp = vector_space(F, n)
 
   function _VtoVp(x::TorQuadModuleElem)
     v = data(x).coeff
