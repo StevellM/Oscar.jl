@@ -983,10 +983,9 @@ function orbit_representatives_and_stabilizers_magma(G::MatrixGroup{E}, k::Int) 
   return [(orb[i], stabs[i]) for i in 1:length(orb)]
 end
 
-function oscar_line_orbits(G::MatrixGroup{E}) where E <: FinFieldElem
-  g = gens(G)
-  d = degree(G)
-  F = base_ring(G)
+function oscar_line_orbits(g::Vector{T}) where T <: MatElem
+  d = nrows(g[1])
+  F = base_ring(g[1])
   V = vector_space(F, d)
   p, e = characteristic(F), degree(F)
   str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
@@ -1001,12 +1000,6 @@ function oscar_line_orbits(G::MatrixGroup{E}) where E <: FinFieldElem
     MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
   end
   orb = Vector{elem_type(F)}[F.(bas[1]) for bas in o]
-  #str = str[1:end-2]*" >; O := LineOrbits(G); Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[1])] : L in O])"
-  #o = MagmaCall.interact() do stdout
-  #  MagmaCall.putcmd(stdout, str)
-  #  MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
-  #end
-  #orb = Vector{elem_type(F)}[F.(bas[1]) for bas in o]
   return orb
 end
 

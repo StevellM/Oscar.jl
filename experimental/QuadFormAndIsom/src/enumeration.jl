@@ -522,6 +522,7 @@ function representatives_of_hermitian_type(Lf::ZZLatWithIsom, m::Int = 1, fix_ro
     if !is_of_same_type(MfM^m, Lf)
       continue
     end
+    @vprintln :ZZLatWithIsom 1 "$(Hecke.to_hecke(H))"
     gr = genus_representatives(H)
     for HH in gr
       M, fM = trace_lattice_with_isometry(HH)
