@@ -54,14 +54,14 @@ function _find_L(pG::Int, nG::Int, r::Int, d::RationalUnion, s::ZZRingElem, l::Z
     pos > pG && return def
     neg = r-pos
     neg > nG && return def
-    gen = integer_genera((pos, neg), d; even)
+    gen = unique!(integer_genera((pos, neg), d; even))
     filter!(G -> is_divisible_by(numerator(scale(G)), s), gen)
     filter!(G -> is_divisible_by(p*l, numerator(level(G))), gen)
   else
     gen = ZZGenus[]
     for s1 in max(0, r-nG):min(pG, r)
       s2 = r-s1
-      L = integer_genera((s1,s2), d; even)
+      L = unique!(integer_genera((s1,s2), d; even))
       filter!(G -> is_divisible_by(numerator(scale(G)), s), L)
       filter!(G -> is_divisible_by(p*l, numerator(level(G))), L)
       append!(gen, L)
@@ -403,10 +403,11 @@ function _possible_signatures(s1::IntegerUnion, s2::IntegerUnion, E::Field, rk::
     if length(v) > s
       continue
     end
+    v = copy(v)
     while length(v) != s
       push!(v, 0)
     end
-    push!(parts, copy(v))
+    v in parts ? continue : push!(parts, v)
     if !fix_root
       for vv in perm
         v2 = v[vv.d]
@@ -419,6 +420,36 @@ function _possible_signatures(s1::IntegerUnion, s2::IntegerUnion, E::Field, rk::
   end
   return signs
 end
+
+function __scale(g::HermLocalGenus)
+  E = base_field(g)
+  OE = maximal_order(E)
+  P = prime_decomposition(OE, prime(g))[1][1]
+  return Hecke.fractional_ideal(OE, P)^(scale(g, 1))
+end
+
+function __norm(G::HermLocalGenus)
+  p = prime(G)
+  OK = order(p)
+  if !is_dyadic(G) || !is_ramified(G)
+    return fractional_ideal(OK, p)^scale(G, 1)
+  else
+    return fractional_ideal(OK, p)^minimum(norms(G))
+  end
+end
+
+function __scale(G::HermGenus)
+  OE = maximal_order(base_field(G))
+  I = prod(__scale(g) for g in G.LGS; init = fractional_ideal(OE, [elem_in_nf(OE(1))]))
+  return I
+end
+
+function __norm(G::HermGenus)
+  OK = base_ring(maximal_order(base_field(G)))
+  I = prod(__norm(g) for g in G.LGS; init = fractional_ideal(OK, [elem_in_nf(OK(1))]))
+  return I
+end
+
 
 @doc raw"""
     representatives_of_hermitian_type(Lf::ZZLatWithIsom, m::Int = 1)
@@ -484,6 +515,7 @@ function representatives_of_hermitian_type(Lf::ZZLatWithIsom, m::Int = 1, fix_ro
   gene = Hecke.genus_herm_type(E)[]
   Eabs, EabstoE = absolute_simple_field(E)
   DE = EabstoE(different(maximal_order(Eabs)))
+  DK = different(base_ring(maximal_order(E)))
 
   @vprintln :ZZLatWithIsom 1 "We have the different"
 
@@ -502,15 +534,14 @@ function representatives_of_hermitian_type(Lf::ZZLatWithIsom, m::Int = 1, fix_ro
 
   @vprintln :ZZLatWithIsom 1 "All possible genera: $(length(gene))"
   for g in gene
-    @vprintln :ZZLatWithIsom 1 "g = $g"
+    if !is_integral(DE*__scale(g))
+      continue
+    end
+    if is_even(Lf) && !is_integral(DK*__norm(g))
+      continue
+    end
+    @vprintln :ZZLatWithIsom 1 "g = $(g.LGS)"
     H = representative(g)
-    if !is_integral(DE*scale(H))
-      continue
-    end
-    if is_even(Lf) && !is_integral(different(fixed_ring(H))*norm(H))
-      continue
-    end
-    @vprintln :ZZLatWithIsom 1 "$H"
     M, fM = trace_lattice_with_isometry(H)
     det(M) == d || continue
     MfM = integer_lattice_with_isometry(M, fM; check = false)
@@ -522,7 +553,6 @@ function representatives_of_hermitian_type(Lf::ZZLatWithIsom, m::Int = 1, fix_ro
     if !is_of_same_type(MfM^m, Lf)
       continue
     end
-    @vprintln :ZZLatWithIsom 1 "$(Hecke.to_hecke(H))"
     gr = genus_representatives(H)
     for HH in gr
       M, fM = trace_lattice_with_isometry(HH)

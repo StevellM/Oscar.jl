@@ -855,9 +855,7 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(Vinq::TorQu
 
   # If V is trivial, then we ignore f and l, we just need to ensure that the
   # order wanted is also 1
-  if order(V) == 1
-    ord != 1 && (return res)
-    push!(res, (Vinq, G))
+  if ord > order(V)
     return res
   end
 
@@ -866,6 +864,8 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(Vinq::TorQu
   pq, pqtoq = primary_part(q, p)
   l = l < 0 ? valuation(order(pq), p) : l
   g = valuation(ord, p)
+
+  all(a -> has_preimage(Vinq, (p^l)*pqtoq(a))[1], gens(pq)) || return res
 
   # some other trivial cases: if ord is 1, then l should be null (-1 by default)
   # Otherwise, if ord == order(V), since V is preserved by f and contained the
@@ -881,7 +881,6 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(Vinq::TorQu
   end
 
   # In theory, V should contain H0 := p^l*pq where pq is the p-primary part of q
-  all(a -> has_preimage(Vinq, (p^l)*pqtoq(a))[1], gens(pq)) || return res
   H0, H0inq = sub(q, elem_type(q)[q(lift((p^l)*a)) for a in gens(pq)])
   @hassert :ZZLatWithIsom 1 is_invariant(f, H0inq)
 
@@ -908,7 +907,6 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(Vinq::TorQu
 
   # We descend G to V for computing stabilizers later on
   GV, GtoGV = restrict_automorphism_group(G, Vinq; check = false)
-  satV, j = kernel(GtoGV)
 
   # Automorphisms in G preserved V and H0, since the construction of H0 is
   # natural. Therefore, the action of G descends to the quotient and we look for
@@ -920,6 +918,7 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(Vinq::TorQu
   MGp = matrix_group(base_ring(Qp), dim(Qp), act_GV)
   GVtoMGp = hom(GV, MGp, MGp.(act_GV); check = false)
   GtoMGp = compose(GtoGV, GVtoMGp)
+  satV, _ = kernel(GtoMGp)
 
   g-ngens(snf(abelian_group(H0))[1]) >= dim(Qp) && return res
   
@@ -927,14 +926,10 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(Vinq::TorQu
   # K is H0 but seen a subvector space of Vp (which is V)
   k, K = kernel(VptoQp.matrix; side = :left)
   gene_H0p = elem_type(Vp)[Vp(vec(collect(K[i,:]))) for i in 1:k]
-  if compute_stab
-    orb_and_stab = try Oscar.orbit_representatives_and_stabilizers_magma(MGp, g-k)
-                   catch e
-                   orbit_representatives_and_stabilizers(MGp, g-k)
-                   end
-  else
-    orb_and_stab = Oscar.orbit_representatives(MGp, g-k, G)
-  end
+  orb_and_stab = try Oscar.orbit_representatives_and_stabilizers_magma(MGp, g-k)
+                 catch e
+                 orbit_representatives_and_stabilizers(MGp, g-k)
+                 end
 
   for (orb, stab) in orb_and_stab
     i = orb.map
