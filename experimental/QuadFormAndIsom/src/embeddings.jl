@@ -1104,13 +1104,13 @@ function _subgroups_orbit_representatives_and_stabilizers_elementary(
   k = nrows(K)
   gene_H0 = elem_type(q)[q(lift(a)) for a in gens(H0)]
 ################################# MAGMA #######################################
-# orb_and_stab = try 
-#                  Oscar.orbit_representatives_and_stabilizers_magma(MGp, g-k)
-#                catch
-#                  orbit_representatives_and_stabilizers(MGp, g-k)
-#                end
+ orb_and_stab = try 
+                  Oscar.orbit_representatives_and_stabilizers_magma(MGp, g-k)
+                catch
+                  orbit_representatives_and_stabilizers(MGp, g-k)
+                end
 ################################# OSCAR #######################################
-  orb_and_stab = orbit_representatives_and_stabilizers(MGp, g-k)
+  #orb_and_stab = orbit_representatives_and_stabilizers(MGp, g-k)
 ###############################################################################
 
   for (orb, stab) in orb_and_stab

@@ -357,12 +357,12 @@ end
 function admissible_triples(
     L::T,
     p::IntegerUnion;
-    IrA::AbstractVector{Int}=0:rank(G),
-    IpA::AbstractVector{Int}=0:rank(G),
-    InA::AbstractVector{Int}=0:rank(G),
-    IrB::AbstractVector{Int}=0:rank(G),
-    IpB::AbstractVector{Int}=0:rank(G),
-    InB::AbstractVector{Int}=0:rank(G),
+    IrA::AbstractVector{Int}=0:rank(L),
+    IpA::AbstractVector{Int}=0:rank(L),
+    InA::AbstractVector{Int}=0:rank(L),
+    IrB::AbstractVector{Int}=0:rank(L),
+    IpB::AbstractVector{Int}=0:rank(L),
+    InB::AbstractVector{Int}=0:rank(L),
     b::Int=0
   ) where T <: Union{ZZLat, ZZLatWithIsom}
   return admissible_triples(genus(L), p; IrA, IpA, InA, IrB, IpB, InB, b)
@@ -650,7 +650,7 @@ function representatives_of_hermitian_type(
     @hassert :ZZLatWithIsom 1 is_zero(chi(1)*chi(-1))
     @vprintln :ZZLatWithIsom 1 "Order smaller than 3"
     f = is_zero(chi(1)) ? identity_matrix(QQ, rG) : -identity_matrix(QQ, rG)
-    repre = oscar_genus_representatives(G; genusDB, root_test)
+    repre = _smart_representatives(G; genusDB, root_test)
     @vprintln :ZZLatWithIsom 1 "$(length(repre)) representative(s)"
     while !is_empty(repre)
       LL = pop!(repre)
@@ -866,22 +866,22 @@ function splitting_of_hermitian_type(
     _rB = rL - _rA
     if pA < 0 && pB < 0
       IpA = 0:max(_rA, pL)
-      IpB = (pL).-(intrA)
+      IpB = (pL).-(IpA)
     end
     if nA < 0 && nB < 0
       InA = 0:max(_rA, nL)
-      InB = (nL).-(intnA)
+      InB = (nL).-(InA)
     end
     atp = admissible_triples(Lf, p; IrA=[_rA], IpA, InA, IrB=[_rB], IpB, InB, b)
     for (A, B) in atp
       As = representatives_of_hermitian_type(A, n, fix_root; genusDB, root_test)
       isempty(As) && continue
-      if root_test && is_definite(As[1])
+      if root_test && is_negative_definite(As[1])
         filter!(LA -> rank(LA) == 0 || minimum(LA) != 2, As)
       end
       Bs = representatives_of_hermitian_type(B, k, fix_root; genusDB, root_test)
       isempty(Bs) && continue
-      if root_test && is_definite(Bs[1])
+      if root_test && is_negative_definite(Bs[1])
         filter!(LB -> rank(LB) == 0 || minimum(LB) != 2, Bs)
       end
       for LA in As, LB in Bs
@@ -1245,23 +1245,21 @@ function splitting(
     return splitting_of_mixed_prime_power(Lf, p, b; eiglat_cond, fix_root, genusDB, root_test, check=false)
   end
 
-  reps = ZZLatWithIsom[]
-  ds = sort!(divisors(n))
-  popfirst!(ds)
-
-  I = invariant_lattice(Lf)
-  Ns = splitting_of_hermitian_type(I, p; eiglat_cond, fix_root, genusDB, root_test, check=false)
-  is_empty(Ns) && return reps
+  ds = sort!(collect(keys(_from_cyclotomic_polynomial_to_dict(minpoly(Lf)))))
+  k = popfirst!(ds)
+  N = kernel_lattice(Lf, k)
+  Ns = splitting_of_hermitian_type(N, p; eiglat_cond, fix_root, genusDB, root_test, check=false)
+  isempty(Ns) && return Ns
 
   x = gen(Hecke.Globals.Zx)
-  chi = x - 1
+  chi = cyclotomic(k, x)
   # TODO: implement a smart gluing procedure where we try to find the best
   # order for the gluings, instead of doing as currently
   for k in ds
     chi *= cyclotomic(k, x)
     M = kernel_lattice(Lf, k)
     Ms = splitting_of_hermitian_type(M, p; eiglat_cond, fix_root, genusDB, root_test, check=false)
-    is_empty(Ms) && return reps
+    is_empty(Ms) && return Ms
     Lq = kernel_lattice(Lf, chi)
     l = length(Ns)
     for i in 1:l
@@ -1274,9 +1272,10 @@ function splitting(
         append!(Ns, Es)
       end
     end
-    isempty(Ns) && return reps
+    isempty(Ns) && return Ns
   end
-  return reps
+  (b == 1) && filter!(N -> order_of_isometry(N) == p*n, Ns)
+  return Ns
 end
 
 @doc raw"""
@@ -1473,11 +1472,11 @@ function _conditions_from_input(
     end
   else
     for k in divs
-      jr = findfirst(a -> a[1] == n, rks)
+      jr = findfirst(a -> a[1] == k, rks)
       rn = isnothing(jr) ? -1 : rks[jr][2]
-      jp = findfirst(a -> a[1] == n, pos_sigs)
+      jp = findfirst(a -> a[1] == k, pos_sigs)
       pn = isnothing(jp) ? -1 : pos_sigs[jp][2]
-      jn = findfirst(a -> a[1] == n, neg_sigs)
+      jn = findfirst(a -> a[1] == k, neg_sigs)
       nn = isnothing(jn) ? -1 : neg_sigs[jn][2]
       eiglat_cond[k] = Int[rn, pn, nn]
     end
@@ -1514,86 +1513,86 @@ end
 #
 ###############################################################################
 
-function oscar_genus_representatives(
-  G::ZZGenus;
-  genusDB::Union{Nothing, Dict{ZZGenus, Vector{ZZLat}}}=nothing,
-  root_test::Bool=false
-)
-  if !is_definite(G) || rank(G) <= 2
-    return Hecke.representatives(G)
-  end
-  if !isnothing(genusDB)
-    haskey(genusDB, G) && return genusDB[G]
-  end
-  r = rank(G)
-  if root_test
-    bn = Float64[0.5, 0.28868, 0.1847, 0.13127, 0.09987, 0.08112, 0.06981, 0.06326,
-	       0.06007, 0.05953, 0.06136, 0.06559, 0.07253, 0.08278, 0.09735, 0.11774,
-	       0.14624, 0.18629, 0.24308, 0.32454, 0.44289, 0.61722, 0.87767, 1.27241]
-    if r <= 24 && abs(det(G)) < inv(bn[Int(r)])^2
-      return ZZLat[]
-    end
-  end
-  mm, l = enumerate_definite_genus(G; stop_after=1000)
-  if !iszero(mm)
-    inv_lat = Hecke.default_invariant_function(l[1])
-    inv_dict = Dict{typeof(inv_lat), Vector{ZZLat}}(inv_lat => ZZLat[l[1]])
-    for N in edg[2:end]
-      inv_lat = Hecke.default_invariant_function(N)
-      if haskey(inv_dict, inv_lat)
-        push!(inv_dict[inv_lat], N)
-      else
-        inv_dict[inv_lat] = ZZLat[N]
-      end
-    end
-    q = next_prime(last(Hecke.primes_up_to(r+1)))
-    Lf = integer_lattice_with_isometry(l[1])
-    pos = is_positive_definite(Lf)
-    # Looking for certain lattices with isometry
-    while !iszero(mm)
-      d = denominator(mm)
-      if isone(d)
-        p = last(Hecke.primes_up_to(q-1))
-      else
-        p = maximum(prime_divisors(d))
-      end
-      q = p
-      if p == 2
-        interv = div(r, 2):-1:1
-      else
-        interv = reverse(p-1:p-1:r)
-      end
-      for k in interv
-        if pos
-          Ns = splitting_of_prime_power(Lf, Int(p), 1; eiglat_cond=Dict(1=>[r-k, r-k, 0], p=>[k, k, 0]), genusDB, root_test=false, check=false)
-        else
-          Ns = splitting_of_prime_power(Lf, Int(p), 1; eiglat_cond=Dict(1=>[r-k, 0, r-k], p=>[k, 0, k]), genusDB, root_test=false, check=false)
-        end
-        for Nf in Ns
-          N = lll(lattice(Nf))
-          invN = Hecke.default_invariant_function(N)
-          if !haskey(inv_dict, invN)
-            inv_dict[invN] = ZZLat[N]
-	          push!(edg, N)
-	          s = isometry_group_order(N)
-	          sub!(mm, mm, 1//s)
-          elseif all(M -> !is_isometric(N, M), inv_dict[invN])
-            push!(inv_dict[invN], N)
-            push!(edg, N)
-	          s = isometry_group_order(N)
-	          sub!(mm, mm, 1//s)
-          end
-          is_zero(mm) && break
-        end
-        is_zero(mm) && break
-      end
-    end
-  end
-  if !isnothing(genusDB)
-    gesnuDB[G] = l
-  end
-  return l
-end
+#function oscar_genus_representatives(
+#  G::ZZGenus;
+#  genusDB::Union{Nothing, Dict{ZZGenus, Vector{ZZLat}}}=nothing,
+#  root_test::Bool=false
+#)
+#  if !is_definite(G) || rank(G) <= 2
+#    return Hecke.representatives(G)
+#  end
+#  if !isnothing(genusDB)
+#    haskey(genusDB, G) && return genusDB[G]
+#  end
+#  r = rank(G)
+#  if root_test && is_negative_definite(G)
+#    bn = Float64[0.5, 0.28868, 0.1847, 0.13127, 0.09987, 0.08112, 0.06981, 0.06326,
+#	       0.06007, 0.05953, 0.06136, 0.06559, 0.07253, 0.08278, 0.09735, 0.11774,
+#	       0.14624, 0.18629, 0.24308, 0.32454, 0.44289, 0.61722, 0.87767, 1.27241]
+#    if r <= 24 && abs(det(G)) < inv(bn[Int(r)])^2
+#      return ZZLat[]
+#    end
+#  end
+#  mm, l = enumerate_definite_genus(G; stop_after=1000)
+#  if !iszero(mm)
+#    inv_lat = Hecke.default_invariant_function(l[1])
+#    inv_dict = Dict{typeof(inv_lat), Vector{ZZLat}}(inv_lat => ZZLat[l[1]])
+#    for N in edg[2:end]
+#      inv_lat = Hecke.default_invariant_function(N)
+#      if haskey(inv_dict, inv_lat)
+#        push!(inv_dict[inv_lat], N)
+#      else
+#        inv_dict[inv_lat] = ZZLat[N]
+#      end
+#    end
+#    q = next_prime(last(Hecke.primes_up_to(r+1)))
+#    Lf = integer_lattice_with_isometry(l[1])
+#    pos = is_positive_definite(Lf)
+#    # Looking for certain lattices with isometry
+#    while !iszero(mm)
+#      d = denominator(mm)
+#      if isone(d)
+#        p = last(Hecke.primes_up_to(q-1))
+#      else
+#        p = maximum(prime_divisors(d))
+#      end
+#      q = p
+#      if p == 2
+#        interv = div(r, 2):-1:1
+#      else
+#        interv = reverse(p-1:p-1:r)
+#      end
+#      for k in interv
+#        if pos
+#          Ns = splitting_of_prime_power(Lf, Int(p), 1; eiglat_cond=Dict(1=>[r-k, r-k, 0], p=>[k, k, 0]), genusDB, root_test=false, check=false)
+#        else
+#          Ns = splitting_of_prime_power(Lf, Int(p), 1; eiglat_cond=Dict(1=>[r-k, 0, r-k], p=>[k, 0, k]), genusDB, root_test=false, check=false)
+#        end
+#        for Nf in Ns
+#          N = lll(lattice(Nf))
+#          invN = Hecke.default_invariant_function(N)
+#          if !haskey(inv_dict, invN)
+#            inv_dict[invN] = ZZLat[N]
+#	          push!(edg, N)
+#	          s = isometry_group_order(N)
+#	          sub!(mm, mm, 1//s)
+#          elseif all(M -> !is_isometric(N, M), inv_dict[invN])
+#            push!(inv_dict[invN], N)
+#            push!(edg, N)
+#	          s = isometry_group_order(N)
+#	          sub!(mm, mm, 1//s)
+#          end
+#          is_zero(mm) && break
+#        end
+#        is_zero(mm) && break
+#      end
+#    end
+#  end
+#  if !isnothing(genusDB)
+#    gesnuDB[G] = l
+#  end
+#  return l
+#end
 
 ###############################################################################
 #

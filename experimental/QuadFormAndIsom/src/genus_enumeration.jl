@@ -8,25 +8,25 @@
 
 ##### Magma line orbits
 
-#function magma_line_orbits(g::Vector{T}) where T <: MatElem
-#  d = nrows(g[1])
-#  F = base_ring(g[1])
-#  V = vector_space(F, d)
-#  p, e = characteristic(F), degree(F)
-#  str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
-#  for m in g
-#    mm = "[" * split(string([m[i,j] for i in 1:nrows(m) for j in 1:ncols(m)]), '[')[2]
-#    str *= mm
-#    str *= ", "
-#  end
-#  str = str[1:end-2]*" >; O := OrbitsOfSpaces(G, 1); Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[2])] : L in O])"
-#  o = MagmaCall.interact() do stdout
-#    MagmaCall.putcmd(stdout, str)
-#    MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
-#  end
-#  orb = Vector{elem_type(F)}[F.(bas[1]) for bas in o]
-#  return orb
-#end
+function magma_line_orbits(g::Vector{T}) where T <: MatElem
+  d = nrows(g[1])
+  F = base_ring(g[1])
+  V = vector_space(F, d)
+  p, e = characteristic(F), degree(F)
+  str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
+  for m in g
+    mm = "[" * split(string([m[i,j] for i in 1:nrows(m) for j in 1:ncols(m)]), '[')[2]
+    str *= mm
+    str *= ", "
+  end
+  str = str[1:end-2]*" >; O := OrbitsOfSpaces(G, 1); Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[2])] : L in O])"
+  o = MagmaCall.interact() do stdout
+    MagmaCall.putcmd(stdout, str)
+    MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+  end
+  orb = Vector{elem_type(F)}[F.(bas[1]) for bas in o]
+  return orb
+end
 
 ###### Neihbours
 
@@ -87,13 +87,13 @@ function _neighbours(
     end
     @hassert :ZZLatWithIsom 3 !isempty(gensp)
 ############################## MAGMA ##########################################
-    # orbs = try
-    #          line_orbits_magma(gensp)
-    #        catch
-    # 	       Vector{elem_type(K)}[orb[1] for orb in Hecke.line_orbits(gensp)]
-    #        end
+     orbs = try
+              line_orbits_magma(gensp)
+            catch
+     	       Vector{elem_type(K)}[orb[1] for orb in Hecke.line_orbits(gensp)]
+            end
 ############################## Hecke ##########################################
-    orbs = Vector{elem_type(K)}[orb[1] for orb in Hecke.line_orbits(gensp)]
+    #orbs = Vector{elem_type(K)}[orb[1] for orb in Hecke.line_orbits(gensp)]
 ###############################################################################
     maxlines = length(orbs)
     stop_after = inf
@@ -421,7 +421,7 @@ function __enumerate_definite_genus(
     append!(edg, _edg)
     length(edg) >= max && return edg
   end
-  return edg, mm
+  return edg
 end
 
 function __enumerate_definite_genus(
@@ -463,7 +463,7 @@ function _smart_representatives(
     haskey(genusDB, G) && return genusDB[G]
   end
   r = rank(G)
-  if root_test
+  if root_test && is_negative_definite(G)
     bn = Float64[0.5, 0.28868, 0.1847, 0.13127, 0.09987, 0.08112, 0.06981, 0.06326,
 	       0.06007, 0.05953, 0.06136, 0.06559, 0.07253, 0.08278, 0.09735, 0.11774,
 	       0.14624, 0.18629, 0.24308, 0.32454, 0.44289, 0.61722, 0.87767, 1.27241]
@@ -471,7 +471,8 @@ function _smart_representatives(
       return ZZLat[]
     end
   end
-  mm, l = __enumerate_definite_genus(G; genusDB, root_test, stop_after=1000)
+  l = __enumerate_definite_genus(G; genusDB, root_test, stop_after=1000)
+  mm = mass(G) - sum(1//isometry_group_order(LL) for LL in l; init=QQ(0))
   if !iszero(mm)
     inv_lat = _default_invariant_function(l[1])
     inv_dict = Dict{typeof(inv_lat), Vector{ZZLat}}(inv_lat => ZZLat[l[1]])
@@ -598,14 +599,14 @@ function isometry_group_order(L::ZZLat)
     return L.automorphism_group_order
   end
 #################################### MAGMA ####################################
-  # LL = is_negative_definite(L) ? rescale(L, -1) : L
-  # s = MagmaCall.interact() do stdout
-  #   MagmaCall.putcmd(stdout, _to_magma_lattice(LL, "L")*"; G := AutomorphismGroup(L); Sprint(#G)")
-  #   MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
-  # end
-  # L.automorphism_group_order = ZZ(s)
+   LL = is_negative_definite(L) ? rescale(L, -1) : L
+   s = MagmaCall.interact() do stdout
+     MagmaCall.putcmd(stdout, _to_magma_lattice(LL, "L")*"; G := AutomorphismGroup(L); Sprint(#G)")
+     MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+   end
+   L.automorphism_group_order = ZZ(s)
 #################################### HECKE ####################################
-  s = Hecke.automorphism_group_order(L)
+  #s = Hecke.automorphism_group_order(L)
 ###############################################################################
   return ZZ(s)
 end
@@ -613,26 +614,26 @@ end
 function is_isometric_smart(L::ZZLat, M::ZZLat; um=true)
   _default_invariant_function(L) != _default_invariant_function(M) && return false
 #################################### MAGMA ####################################
-  # LL = is_negative_definite(L) ? rescale(L, -1) : L
-  # MM = is_negative_definite(M) ? rescale(M, -1) : M
-  # b = MagmaCall.interact() do stdout
-  #   MagmaCall.putcmd(stdout, _to_magma_lattice(LL, "L")*"; "*_to_magma_lattice(MM, "M")*"; Sprint(IsIsometric(L, M))")
-  #   MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
-  # end
+   LL = is_negative_definite(L) ? rescale(L, -1) : L
+   MM = is_negative_definite(M) ? rescale(M, -1) : M
+   b = MagmaCall.interact() do stdout
+     MagmaCall.putcmd(stdout, _to_magma_lattice(LL, "L")*"; "*_to_magma_lattice(MM, "M")*"; Sprint(IsIsometric(L, M))")
+     MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+   end
 #################################### HECKE ####################################
-  b = Hecke.is_isometric(L, M)
+  #b = Hecke.is_isometric(L, M)
 ###############################################################################
   return b
 end
 
 #################################### MAGMA ####################################
-# function _to_magma_lattice(L::ZZLat, name::String)
-#   Lmat = gram_matrix(L)
-#   mat = "[" * split(string([Lmat[i,j] for i in 1:nrows(Lmat) for j in 1:ncols(Lmat)]), '[')[2]
-#   mat = replace(mat, "//" => "/")
-#   str = "$name := LatticeWithGram(Matrix(Rationals(), $(rank(L)), $(rank(L)), $mat))"
-#   return str
-# end
+ function _to_magma_lattice(L::ZZLat, name::String)
+   Lmat = gram_matrix(L)
+   mat = "[" * split(string([Lmat[i,j] for i in 1:nrows(Lmat) for j in 1:ncols(Lmat)]), '[')[2]
+   mat = replace(mat, "//" => "/")
+   str = "$name := LatticeWithGram(Matrix(Rationals(), $(rank(L)), $(rank(L)), $mat))"
+   return str
+ end
 ################################################################################
 
 function isometry_group_smart(L::ZZLat)
@@ -650,67 +651,67 @@ function isometry_group_smart(L::ZZLat)
 
   @req is_definite(L) "Lattice must be definite or of rank at most 2"
 #################################### MAGMA ####################################  
-  # if !isdefined(L, :automorphism_group_generators)
-  #   G = gram_matrix(L)
-  #   LL = is_negative_definite(L) ? integer_lattice(; gram = -G) : integer_lattice(; gram = G)
-  #   _gene = MagmaCall.interact() do stdout
-  #     MagmaCall.putcmd(stdout, _to_magma_lattice(LL, "L")*"; G := AutomorphismGroup(L); Gene := Generators(G); Sprint([[[M[j,k] : k in [1..NumberOfColumns(M)]] : j in [1..NumberOfRows(M)]] : M in Gene])")
-  #     MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
-  #   end
-  #   V = ambient_space(L)
-  #   B = basis_matrix(L)
-  #   B2 = orthogonal_complement(V, B)
-  #   C = vcat(B, B2)
-  #   gene1 = QQMatrix[matrix(QQ, length(g), length(g), reduce(vcat, g)) for g in _gene]
-  #   gene = QQMatrix[inv(C)*block_diagonal_matrix([m, identity_matrix(QQ, nrows(B2))])*C for m in gene1]
-  #   aut = matrix_group(gene)
-  # else
-  #   _gene = L.automorphism_group_generators
-  #   V = ambient_space(L)
-  #   B = basis_matrix(L)
-  #   B2 = orthogonal_complement(V, B)
-  #   C = vcat(B, B2)
-  #   gene1 = map(m -> map_entries(QQ, m), _gene)
-  #   gene = QQMatrix[inv(C)*block_diagonal_matrix([m, identity_matrix(QQ, nrows(B2))])*C for m in gene1]
-  #   aut = matrix_group(gene)
-  # end
+   if !isdefined(L, :automorphism_group_generators)
+     G = gram_matrix(L)
+     LL = is_negative_definite(L) ? integer_lattice(; gram = -G) : integer_lattice(; gram = G)
+     _gene = MagmaCall.interact() do stdout
+       MagmaCall.putcmd(stdout, _to_magma_lattice(LL, "L")*"; G := AutomorphismGroup(L); Gene := Generators(G); Sprint([[[M[j,k] : k in [1..NumberOfColumns(M)]] : j in [1..NumberOfRows(M)]] : M in Gene])")
+       MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+     end
+     V = ambient_space(L)
+     B = basis_matrix(L)
+     B2 = orthogonal_complement(V, B)
+     C = vcat(B, B2)
+     gene1 = QQMatrix[matrix(QQ, length(g), length(g), reduce(vcat, g)) for g in _gene]
+     gene = QQMatrix[inv(C)*block_diagonal_matrix([m, identity_matrix(QQ, nrows(B2))])*C for m in gene1]
+     aut = matrix_group(gene)
+   else
+     _gene = L.automorphism_group_generators
+     V = ambient_space(L)
+     B = basis_matrix(L)
+     B2 = orthogonal_complement(V, B)
+     C = vcat(B, B2)
+     gene1 = map(m -> map_entries(QQ, m), _gene)
+     gene = QQMatrix[inv(C)*block_diagonal_matrix([m, identity_matrix(QQ, nrows(B2))])*C for m in gene1]
+     aut = matrix_group(gene)
+   end
 #################################### Hecke ####################################
-  _gene = automorphism_group_generators(L)
-  V = ambient_space(L)
-  B = basis_matrix(L)
-  B2 = orthogonal_complement(V, B)
-  C = vcat(B, B2)
-  gene1 = map(m -> map_entries(QQ, m), _gene)
-  gene = QQMatrix[inv(C)*block_diagonal_matrix([m, identity_matrix(QQ, nrows(B2))])*C for m in gene1]
-  aut = matrix_group(gene)
+  #_gene = automorphism_group_generators(L)
+  #V = ambient_space(L)
+  #B = basis_matrix(L)
+  #B2 = orthogonal_complement(V, B)
+  #C = vcat(B, B2)
+  #gene1 = map(m -> map_entries(QQ, m), _gene)
+  #gene = QQMatrix[inv(C)*block_diagonal_matrix([m, identity_matrix(QQ, nrows(B2))])*C for m in gene1]
+  #aut = matrix_group(gene)
 ###############################################################################
   return aut, gene
 end
 
 
 ############################### MAGMA #########################################
-# function orbit_representatives_and_stabilizers_magma(G::MatrixGroup{E}, k::Int) where E <: FinFieldElem
-#   g = gens(G)
-#   d = degree(G)
-#   F = base_ring(G)
-#   V = vector_space(F, d)
-#   p, e = characteristic(F), degree(F)
-#   str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
-#   for m in g
-#     mm = "[" * split(string([m[i,j] for i in 1:nrows(m) for j in 1:ncols(m)]), '[')[2]
-#     str *= mm
-#     str *= ", "
-#   end
-#   str = str[1:end-2]*" >; O := OrbitsOfSpaces(G, $k); S1 := Sprint([[[[M[j,k] : k in [1..NumberOfColumns(M)]] : j in [1..NumberOfRows(M)]] : M in Generators(Stabilizer(G, L[2]       ))] : L in O]); S2 := Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[2])] : L in O]); [S1, S2]"
-#   o = MagmaCall.interact() do stdout
-#     MagmaCall.putcmd(stdout, str)
-#     MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
-#   end
-#   L1, L2 = o
-#   stabs = Vector{elem_type(G)}[elem_type(G)[G(matrix(F, d, d, reduce(vcat, v))) for v in bas] for bas in L1]
-#   stabs = [sub(G, bas)[1] for bas in stabs]   
-#   orb = Vector{elem_type(V)}[elem_type(V)[V(F.(v)) for v in bas] for bas in L2]
-#   orb = [sub(V, bas)[1] for bas in orb]
-#   return [(orb[i], stabs[i]) for i in 1:length(orb)]
-# end    
+ function orbit_representatives_and_stabilizers_magma(G::MatrixGroup{E}, k::Int) where E <: FinFieldElem
+   g = gens(G)
+   d = degree(G)
+   F = base_ring(G)
+   V = vector_space(F, d)
+   p, e = characteristic(F), degree(F)
+   str = "K := GF($p, $e); G := MatrixGroup<$d, K | "
+   for m in g
+     mm = "[" * split(string([m[i,j] for i in 1:nrows(m) for j in 1:ncols(m)]), '[')[2]
+     str *= mm
+     str *= ", "
+   end
+   str = str[1:end-2]*" >; O := OrbitsOfSpaces(G, $k); S1 := Sprint([[[[M[j,k] : k in [1..NumberOfColumns(M)]] : j in [1..NumberOfRows(M)]] : M in Generators(Stabilizer(G, L[2]       ))] : L in O]); S2 := Sprint([[[M[k] : k in [1..NumberOfColumns(M)]] : M in Basis(L[2])] : L in O]); [S1, S2]"
+   o = MagmaCall.interact() do stdout
+     MagmaCall.putcmd(stdout, str)
+     MagmaCall.readtotoken(String, stdout, missing) |> Meta.parse |> eval
+   end
+   L1, L2 = o
+   stabs = Vector{elem_type(G)}[elem_type(G)[G(matrix(F, d, d, reduce(vcat, v))) for v in bas] for bas in L1]
+   stabs = [sub(G, bas)[1] for bas in stabs]   
+   orb = Vector{elem_type(V)}[elem_type(V)[V(F.(v)) for v in bas] for bas in L2]
+   orb = [sub(V, bas)[1] for bas in orb]
+   return [(orb[i], stabs[i]) for i in 1:length(orb)]
+ end    
 ###############################################################################   
