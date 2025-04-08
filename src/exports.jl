@@ -794,10 +794,14 @@ export intersections
 export inv
 export inv!
 export invariant_alternating_forms
+export invariant_bilinear_form
 export invariant_bilinear_forms
 export invariant_hermitian_forms
+export invariant_lattice_of_K3_cover
+export invariant_quadratic_form
 export invariant_quadratic_forms
 export invariant_ring
+export invariant_sesquilinear_form
 export invariant_sesquilinear_forms
 export invariant_symmetric_forms
 export inverse
@@ -1258,6 +1262,8 @@ export number_of_standard_tableaux
 export number_of_transitive_groups, has_number_of_transitive_groups
 export number_of_weak_compositions
 export numerator
+export numerical_lattice 
+export numerical_lattice_of_K3_cover
 export objective_function
 export omega_group
 export on_echelon_form_mats
@@ -1506,6 +1512,7 @@ export scalar_product
 export scheme
 export scheme_type
 export schensted
+export show_atlas_info
 export schur_cover
 export schur_index
 export schur_multiplier
@@ -1657,6 +1664,7 @@ export transitive_group_identification, has_transitive_group_identification
 export transitivity
 export transport
 export transportation_polytope
+export triangular_decomposition
 export trivial_character
 export trivial_divisor
 export trivial_divisor_class
@@ -1670,6 +1678,7 @@ export tropical_median_consensus
 export tropical_pluecker_vector
 export tropical_polynomial
 export tropical_variety
+export tropical_prevariety
 export truncate
 export turn_denominator_into_polyhedron
 export tutte_connectivity
