@@ -97,11 +97,11 @@ function _neighbours(
 ###############################################################################
     maxlines = length(orbs)
     stop_after = inf
-    @vprintln :ZZLatWithIsom 3 "$(maxlines) orbits of lines to try"
+    #@vprintln :ZZLatWithIsom 3 "$(maxlines) orbits of lines to try"
   else
     P = Hecke.enumerate_lines(K, rank(L))
     maxlines = algorithm == :random ? min(rand_neigh, length(P)) : length(P)
-    @vprintln :ZZLatWithIsom 3 "Try $(maxlines) random lines"
+    #@vprintln :ZZLatWithIsom 3 "Try $(maxlines) random lines"
   end
 
   result = typeof(L)[]
@@ -182,7 +182,7 @@ function _neighbours(
       end
 
       vain[] = Int(0)
-      @vprintln :ZZLatWithIsom 3 "Keep an isometry class"
+      #@vprintln :ZZLatWithIsom 3 "Keep an isometry class"
       if algorithm != :spinor
         invLL = _invariants(LL)
 	if haskey(inv_dict[], invLL)
@@ -193,7 +193,7 @@ function _neighbours(
         push!(result, LL)
 
         if save_partial
-          save_lattice(LL, save_path)
+          Hecke.save_lattice(LL, save_path)
         end
 
         if use_mass
@@ -208,6 +208,7 @@ function _neighbours(
       end
     end
   end
+  GC.gc()
   return result
 end
 
@@ -366,11 +367,11 @@ function __enumerate_definite_genus(
     use_mass::Bool = true,
     stop_after::IntExt = inf,
     max::IntExt = inf,
-    genusDB::Union{Nothing, Dict{ZZGenus, Vector{ZZLat}}}=nothing,
-    root_test::Bool=false
   )
   @req !save_partial || !isnothing(save_path) "No path mentioned for saving partial results"
-
+  if save_partial
+    Hecke.save_lattice(L, save_path)
+  end
   edg = ZZLat[]
 
   # We first compute representatives for each spinor genus
@@ -434,8 +435,6 @@ function __enumerate_definite_genus(
     use_mass::Bool=true,
     stop_after::IntExt=inf,
     max::IntExt=inf,
-    genusDB::Union{Nothing, Dict{ZZGenus, Vector{ZZLat}}}=nothing,
-    root_test::Bool=false
   )
   L = representative(G)
   @show G
@@ -446,15 +445,16 @@ function __enumerate_definite_genus(
                                                   save_path,
                                                   use_mass,
                                                   stop_after,
-                                                  max,
-					                                        genusDB,
-                                                  root_test)
+						  max)
 end
 
 function _smart_representatives(
-  G::ZZGenus;
+  G::ZZGenus,
+  algorithm::Symbol = :default;
   genusDB::Union{Nothing, Dict{ZZGenus, Vector{ZZLat}}}=nothing,
-  root_test::Bool=false
+  root_test::Bool=false,
+  save_partial::Bool=false,
+  save_path::Union{IO, String, Nothing}=nothing,
 )
   if !is_definite(G) || rank(G) <= 2
     return Hecke.representatives(G)
@@ -463,20 +463,22 @@ function _smart_representatives(
     haskey(genusDB, G) && return genusDB[G]
   end
   r = rank(G)
-  if root_test && is_negative_definite(G)
+  if root_test && iszero(signature_tuple(G)[1])
     bn = Float64[0.5, 0.28868, 0.1847, 0.13127, 0.09987, 0.08112, 0.06981, 0.06326,
-	       0.06007, 0.05953, 0.06136, 0.06559, 0.07253, 0.08278, 0.09735, 0.11774,
-	       0.14624, 0.18629, 0.24308, 0.32454, 0.44289, 0.61722, 0.87767, 1.27241]
+               0.06007, 0.05953, 0.06136, 0.06559, 0.07253, 0.08278, 0.09735, 0.11774,
+               0.14624, 0.18629, 0.24308, 0.32454, 0.44289, 0.61722, 0.87767, 1.27241]
     if r <= 24 && abs(det(G)) < inv(bn[Int(r)])^2
       return ZZLat[]
     end
   end
-  l = __enumerate_definite_genus(G; genusDB, root_test, stop_after=1000)
+  l = __enumerate_definite_genus(G, algorithm; save_partial, save_path, stop_after=1000)
+  @assert !isempty(l)
   mm = mass(G) - sum(1//isometry_group_order(LL) for LL in l; init=QQ(0))
   if !iszero(mm)
+    @info "Need to enumerate isometries"
     inv_lat = _default_invariant_function(l[1])
     inv_dict = Dict{typeof(inv_lat), Vector{ZZLat}}(inv_lat => ZZLat[l[1]])
-    for N in edg[2:end]
+    for N in l[2:end]
       inv_lat = _default_invariant_function(N)
       if haskey(inv_dict, inv_lat)
         push!(inv_dict[inv_lat], N)
@@ -496,41 +498,61 @@ function _smart_representatives(
         p = maximum(prime_divisors(d))
       end
       @show d, p
-      q = p
       if p == 2
-        interv = div(r, 2):-1:1
+        interv = div(r, 2, RoundUp):-1:1
       else
         interv = reverse(p-1:p-1:r)
       end
       for k in interv
         if pos
-          Ns = splitting_of_prime_power(Lf, Int(p), 1; eiglat_cond=Dict(1=>[r-k, r-k, 0], p=>[k, k, 0]), genusDB, root_test=false, check=false)
+	  atp = admissible_triples(Lf, Int(p); IrA=Int[r-k], IpA=Int[r-k], InA=Int[0], IrB=Int[k], IpB=Int[k], InB=Int[0], b=1)
         else
-          Ns = splitting_of_prime_power(Lf, Int(p), 1; eiglat_cond=Dict(1=>[r-k, 0, r-k], p=>[k, 0, k]), genusDB, root_test=false, check=false)
+	  atp = admissible_triples(Lf, Int(p); IrA=Int[r-k], IpA=Int[0], InA=Int[r-k], IrB=Int[k], IpB=Int[0], InB=Int[k], b=1)
         end
-        for Nf in Ns
-          N = lll(lattice(Nf))
-          invN = _default_invariant_function(N)
-          if !haskey(inv_dict, invN)
-            inv_dict[invN] = ZZLat[N]
-	          push!(edg, N)
-	          s = isometry_group_order(N)
-	          sub!(mm, mm, 1//s)
-          elseif all(M -> !is_isometric_smart(N, M), inv_dict[invN])
-            push!(inv_dict[invN], N)
-            push!(edg, N)
-	          s = isometry_group_order(N)
-	          sub!(mm, mm, 1//s)
-          end
+	@show length(atp)
+	for (A, B) in atp
+	  As = representatives_of_hermitian_type(A, 1; genusDB)
+          isempty(As) && continue
+	  Bs = representatives_of_hermitian_type(B, Int(p); genusDB)
+          isempty(Bs) && continue
+	  for LA in As, LB in Bs
+     	    Ns = admissible_equivariant_primitive_extensions(LA, LB, Lf, Int(p); check=false)
+            for Nf in Ns
+              N = lll(lattice(Nf))
+              invN = _default_invariant_function(N)
+              if !haskey(inv_dict, invN)
+                inv_dict[invN] = ZZLat[N]
+	        push!(l, N)
+	        if save_partial
+    	          Hecke.save_lattice(N, save_path)
+	        end
+	        s = isometry_group_order(N)
+	        sub!(mm, mm, 1//s)
+              elseif all(M -> !is_isometric_smart(N, M), inv_dict[invN])
+                push!(inv_dict[invN], N)
+                push!(l, N)
+                if save_partial
+    	          Hecke.save_lattice(N, save_path)
+	        end
+	        s = isometry_group_order(N)
+	        sub!(mm, mm, 1//s)
+	      end
+	      is_zero(mm) && break
+            end
+	    is_zero(mm) && break
+	  end
           is_zero(mm) && break
         end
+	@v_do :ZZLatWithIsom 1 perc = Float64(mm//mass(G)) * 100
+	@vprintln :ZZLatWithIsom 1 "Lattices: $(length(l)), Target mass: $(mass(G)). missing: $(mm) ($(perc)%)"
         is_zero(mm) && break
       end
     end
   end
   if !isnothing(genusDB)
-    gesnuDB[G] = l
+    genusDB[G] = l
   end
+  GC.gc()
   return l
 end
 
