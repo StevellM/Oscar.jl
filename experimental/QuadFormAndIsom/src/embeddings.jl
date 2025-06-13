@@ -375,22 +375,25 @@ function _can_be_made_equivariant(
   return true, phi
 end
 
-# We look for representatives of orbits of isometries on a lattice $N$ which
-# fit in a given gluing context, i.e. for which a given glue map is
-# equivariant. These isometries all live in a same coset, and we identity two
-# isometries in Let $N$ be the associated lattice.
-# * `OqfN` here is the image of $O(N)\to O(qN)$ where `qN` is the discriminant
-#    group.
-# * `HNinqN` is the embedding of the glue domain `HN` into `qN`.
-# * `phig` is the glue map between a module `HM` and `HN`.
-# * `fHM` is the isometry of `HM` which should coincide with the isometries of
-#   $N$ along the gluing `phig`.
+# We are given a primitive extension $M\oplus N \subseteq L$ with $N$
+# negative definite. We assume that we have fixed an isometry $f\in O(M)$.
+# We want to determine isometries $g$ of $N$ such that $f\oplus g$ preserves
+# the lattice $L$ (call them "fitting isometries").
+# * `GN` here is the image of $O(N)\to O(qN)$ where `qN` is the discriminant
+#    group of `N`.
+# * `HNinqN` is the embedding of the glue domain `HN` into `qN`, for the given
+#   primitive extension.
+# * `phig` is the glue map between a module `HM` and `HN` associated to the
+#   given primitive extension.
+# * `fHM` is the isometry of `HM` induced by the action of the fixed isometry
+#   `f` of `M`.
 # * `discrep` is the map $O(N)\to O(qN)$.
-# * `stabN` is the stabilizer of `HN` in `GN`, where `GN` is a classifying
-#   group for $N$.
+# * `stabN` is the stabilizer of `HN` in `O_N`, where `O_N` is a classifying
+#   group for $N$ (mostly either the trivial group or the representation of
+#   $O(L, N)$ on $qN$).
 # * if `first == true`, we return only one fitting isometry.
 function _fitting_isometries(
-    OqfN::AutomorphismGroup{TorQuadModule},
+    GN::AutomorphismGroup{TorQuadModule},
     HNinqN::TorQuadModuleMap,
     phig::TorQuadModuleMap,
     fHM::TorQuadModuleMap,
@@ -400,44 +403,42 @@ function _fitting_isometries(
     first::Bool,
   )
   OHN = orthogonal_group(domain(HNinqN)) # This is normally cached
-  _stabN, _ = stabilizer(OqfN, HNinqN) # A priori, this could be different from stabN
+  _stabN, _ = stabilizer(GN, HNinqN) # A priori, this could be different from stabN
   imOHN = elem_type(OHN)[OHN(restrict_automorphism(x, HNinqN; check=false); check=false) for x in gens(_stabN)]
   _actN = hom(_stabN, OHN, imOHN; check=false)
   _imN, _ = image(_actN) # This group consists of isometry of HN which can be lifted to O(N)
-  _fHN = OHN(compose(inv(phig), compose(fHM, phig)); check=false)
+  _gHN = OHN(compose(inv(phig), compose(fHM, phig)); check=false)
 
-  _fHN in _imN || return QQMatrix[] # Now phig is (fHM, _fHN)-equivariant
-  _fqN = _actN\_fHN
-  _fN = discrep\_fqN
+  _gHN in _imN || return QQMatrix[] # Now phig is (fHM, _fHN)-equivariant
+  _gqN = _actN\_gHN
+  _gN = discrep\_gqN # Initial fitting isometry
 
-  # _fN is one of the fitting isometries. Now there are two cases:
-  # - either we only want one of such, and we are done (we just make it into a
-  #   honest isometry of N);
+  # _gN is one of the fitting isometries. Now there are two cases:
+  # - either we only want one of such, and we are done;
   # - or we want all such isometries up to the action of the classifying group.
   #
   # For the latter, we remark that: the set of isometries of N restricting to
-  # _fHN is the coset _fN*KN where KN is the preimage by discrep of the kernel
+  # _gHN is the coset _gN*KN where KN is the preimage by discrep of the kernel
   # of _imN. Now, inside this coset, some isometries could still give rise to
   # isomorphic equivariant primitive extensions for our classifying group. Thus
   # we need to identify isometries which are conjugate by an isometry of our
   # classifying group stabilizing HN (otherwise it does not make sense). This
   # group of isometries is exactly the preimage by discrep of the centralizer
-  # in stabN of _fN, which we call CN here.
+  # in stabN of _gHN, which we call CN here.
   #
   # To summarize, in the general case, we obtain representatives of fitting
-  # isometries by identifying CN-conjugate isometries in the coset fNKN.
+  # isometries by identifying CN-conjugate isometries in the coset gNKN.
   if first
-    reporb = QQMatrix[solve(basis_matrix(N), basis_matrix(N)*matrix(_fN); side=:left)]
+    reporb = QQMatrix[solve(basis_matrix(N), basis_matrix(N)*matrix(_gN); side=:left)]
   else
     KNhat, _ = discrep\(kernel(_actN)[1])
-    _CN, _ = centralizer(_actN(stabN)[1], _imN(_fHN))
-    @vprintln :ZZLatWithIsom 1 "Centralizer fitting isometries computed"
+    _CN, _ = centralizer(_actN(stabN)[1], _imN(_gHN))
     _CN, _ = _actN\_CN
     CN, _ = discrep\_CN
-    @hassert :ZZLatWithIsom 1 is_normal_subgroup(KNhat, CN)
-    @hassert :ZZLatWithIsom 1 all(g -> g * _fN == _fN * g, gens(CN))
-    fNKN = _fN*KNhat
-    m = gset(CN, (a, g) -> inv(g)*a*g, fNKN)
+    @hassert :ZZLatWithIsom 3 is_normal_subgroup(KNhat, CN)
+    @hassert :ZZLatWithIsom 3 all(g -> g * _gN == _gN * g, gens(CN))
+    gNKN = _gN*KNhat
+    m = gset(CN, (a, g) -> inv(g)*a*g, gNKN)
     reporb = QQMatrix[matrix(representative(a)) for a in orbits(m)]
     map!(m -> solve(basis_matrix(N), basis_matrix(N)*m; side=:left), reporb, reporb)
   end
@@ -637,7 +638,7 @@ function _primitive_extensions_generic(
     !is_divisible_by(numerator(gcd(det(M), det(N))), glue_order) && return false, results
     if !isnothing(q)
       @req modulus_bilinear_form(q) == 1 "q does not define the discriminant form of an integral lattice"
-      glue_order^2*order(q) == det(M)*det(N) || return false, results
+      glue_order^2*order(q) == abs(det(M)*det(N)) || return false, results
       aM, _, bM = signature_tuple(M)
       aN, _, bN = signature_tuple(N)
       !is_genus(q, (aM+aN, bM+bN); parity) && return false, results
@@ -708,7 +709,6 @@ function _primitive_extensions_generic(
 
   for k in pos_ord
     ok, ek, pk = is_prime_power_with_data(k)
-    @vprintln :ZZLatWithIsom 1 "Glue order: $(k)"
     # If k is a prime power, then we check whether any of the pk-primary part
     # of qM or qN is elementary (to make things faster)
     if ok
@@ -793,7 +793,6 @@ function _primitive_extensions_generic(
         # primitive extensions we consider, i.e. it is in bijection with the set
         # of (equivariant) gluings.
         reps = double_cosets(codomain(iso), iso(SM)[1], iso(SN)[1])
-        @vprintln :ZZLatWithIsom 1 "$(length(reps)) isomorphism class(es) of primitive extensions"
 
         for _g in reps
           g = iso\(representative(_g))
@@ -1205,7 +1204,7 @@ is isometric to $M$, $N'$ is isometric to $N$ and $L$ is a primitive extension
 of $M'\oplus N'$ satisfying conditions `glue_order` or `q` if assigned.
 
 The content of $V$ depends on the value `classification`.
-There are 6 possibilities:
+There are six possibilities:
   * `classification == :none`: $V$ is the empty list;
   * `classification == :first`: $V$ consists of the first primitive extension
     computed;
@@ -1281,7 +1280,7 @@ isometric to $M$, and $N'$ is the orthogonal complement of $M'$ in $L'$.
 
 If `T == false`, then $V$ will always be the empty list. If `T == true`, then
 the content of $V$ depends on the value of the symbol `classification`. There
-are 4 possibilities:
+are four possibilities:
   * `classification == :none`: $V$ is the empty list;
   * `classification == :first`: $V$ consists of the first primitive embedding
     found;
@@ -1358,7 +1357,7 @@ $L'$ isometric to $M$, and $N'$ is the orthogonal complement of $M'$ in $L'$.
 
 If `T == false`, then $V$ will always be the empty list. If `T == true`, then
 the content of $V$ depends on the value of the symbol `classification`. There
-are 4 possibilities:
+are four possibilities:
   * `classification == :none`: $V$ is the empty list;
   * `classification == :first`: $V$ consists of the first primitive embedding
     found;
@@ -1408,7 +1407,7 @@ $(L', M', N')$ where $L'$ is a lattice in $G$, $M'$ is a sublattice of
 $L'$ isometric to $M$, and $N'$ is the orthogonal complement of $M'$ in $L'$.
 
 If `T == false`, then $V$ will always be the empty list. If `T == true`, then
-the content of $V$ depends on the value of `classification`. There are 4
+the content of $V$ depends on the value of `classification`. There are four
 possibilities:
   * `classification == :none`: $V$ is the empty list;
   * `classification == :first`: $V$ consists of the first primitive embedding
@@ -1662,7 +1661,7 @@ or `q` if assigned. If $M$ (resp. $N$) is equipped with an isometry $f_M$
 $(N, f_N)$) are isomorphic as lattices with isometry.
 
 The content of $V$ depends on the value of `classification`.
-There are 6 possibilities:
+There are six possibilities:
   * `classification == :none`: $V$ is empty by default;
   * `classification == :first`: $V$ consists of the first equivariant primitive
     extension computed;
@@ -1757,7 +1756,6 @@ function equivariant_primitive_extensions(
   qN = discriminant_group(N)
   discN = discriminant_representation(N, orthogonal_group(N))
   OqfN, _ = image(discN)
-  @vprintln :ZZLatWithIsom 1 "Discriminant representation computed"
 
   qM, fqM = discriminant_group(M)
   if classification == :embsub || classification == :embemb
@@ -1826,6 +1824,7 @@ end
       p::IntegerUnion,
       q::IntegerUnion = p;
       check::Bool=true,
+      test_type::Bool=true,
     ) -> Vector{ZZLatWithIsom}
 
 Given a triple of lattices with isometry $(A, f_A)$, $(B, f_B)$ and $(C, f_C)$,
@@ -1846,6 +1845,9 @@ are orthogonal if $A$, $B$ and $C$ lie in the same ambient quadratic space.
 Note moreover that the function computes the image of the natural map
 $O(C, f_C) \to O(D_C, D_{f_C})$ along the primitive extension
 $A\oplus B\subseteq C$ (see Algorithm 2, Line 22 of [BH23](@cite)).
+
+If one sets `test_type` to `false`, then the function does not check if the
+outputs satisfy the type condition.
 """
 function admissible_equivariant_primitive_extensions(
     A::ZZLatWithIsom,
@@ -1854,6 +1856,7 @@ function admissible_equivariant_primitive_extensions(
     p::IntegerUnion,
     q::IntegerUnion = p;
     check::Bool=true,
+    test_type::Bool=true,
   )
   # p and q can be equal, and they will be most of the time
   @req is_prime(p) && is_prime(q) "p and q must be prime numbers"
@@ -1909,7 +1912,9 @@ function admissible_equivariant_primitive_extensions(
     C2fC2 = integer_lattice_with_isometry(C2, fC2; ambient_representation=false, check)
 
     # If not of the good type, we discard it
-    !is_of_type(C2fC2^q, type(C)) && return results
+    if test_type && !is_of_type(C2fC2^q, type(C))
+      return results
+    end
     qC2 = discriminant_group(C2)
     OqC2 = orthogonal_group(qC2)
     phi2 = hom(qC2, D, elem_type(D)[D(lift(x)) for x in gens(qC2)])
@@ -2046,7 +2051,9 @@ function admissible_equivariant_primitive_extensions(
       C2fC2 = integer_lattice_with_isometry(C2, fC2; ambient_representation=false, check)
 
       # This is the type requirement: somehow, we want `(C2, fC2)` to be a "q-th root" of `(C, fC)`.
-      !is_of_type(C2fC2^q, type(C)) && continue
+      if test_type && !is_of_type(C2fC2^q, type(C))
+        continue
+      end
 
       disc, stab = _glue_stabilizers(phig, actA, actB, OqAinOD, OqBinOD, extinD)
 

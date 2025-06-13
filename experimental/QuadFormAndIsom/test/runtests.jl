@@ -268,6 +268,22 @@ end
   @test length(admissible_triples(E6, 2; IpA=[2])) == 2
   @test length(admissible_triples(rescale(E6, 2), 2; IpB=[4])) == 2
   @test length(admissible_triples(E6, 3; IpA=[2], IpB=[4])) == 1
+<<<<<<< HEAD
+=======
+
+  Zx, x = ZZ["x"]
+  U = hyperbolic_plane_lattice()
+  E8 = root_lattice(:E, 8)
+  L = direct_sum(U, E8)[1]
+  r = enumerate_classes_of_lattices_with_isometry(L, 30; char_poly=(x-1)^2*cyclotomic(30, x))
+  @test length(r) == 1
+  @test det(invariant_lattice(r[1])) == -1
+
+  M = direct_sum(U, U, U, U, U)[1]
+  r = enumerate_classes_of_lattices_with_isometry(M, 4; min_poly=(x^2-1)*cyclotomic(4,x), pos_sigs=[(1,2), (2,1), (4,2)], neg_sigs=[(2,0)], fix_root=4)
+  @test length(r) == 5
+  @test length(filter(N -> det(kernel_lattice(N, 2)) == 4, r)) == 3
+>>>>>>> main
 end
 
 @testset "Enumeration of lattices with isometry of hermitian type" begin
@@ -284,6 +300,14 @@ end
   L = direct_sum(U, U, U, U)[1]
   @test length(representatives_of_hermitian_type(L, 5)) == 3
   @test length(representatives_of_hermitian_type(L, 5, 5)) == 2
+<<<<<<< HEAD
+=======
+
+  L = integer_lattice(; gram=matrix(QQ, 2, 2, [2 0; 0 2]))
+  I = integer_lattice_with_isometry(L; neg=true)
+  r = splitting(I, 2)
+  @test is_of_hermitian_type(r[1])
+>>>>>>> main
 end
 
 @testset "Primitive extensions and embeddings" begin
@@ -456,4 +480,12 @@ end
   @testset "< 1.4.0 Upgrade" begin
     test_1_4_0_upgrade(;only=["ZZLatWithIsom"])
   end
+end
+
+@testset "Fix type condition" begin
+  B = matrix(QQ, 6, 6 ,[-1//2, 0, 1//2, 0, 0, 0, 0, 1//2, 0, 0, -1//2, 0, 0, 0, 0, -1//2, 0, 1//2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 1, 0, -1, 0, -1, 0, 0, 0])
+  G = matrix(QQ, 6, 6 ,[1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, -13, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, -91])
+  L = integer_lattice(B, gram = G)
+  r = enumerate_classes_of_lattices_with_isometry(L, 14; char_poly=cyclotomic_polynomial(14), fix_root=14)
+  @test length(r) == 3
 end
