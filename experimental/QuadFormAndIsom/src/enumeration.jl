@@ -949,7 +949,6 @@ function representatives_of_hermitian_type(
     H = representative(g)
     M, fM = trace_lattice_with_isometry(H)
     genus(M) != G && continue
-    Hecke.to_hecke(H)
     MfM = integer_lattice_with_isometry(M, fM; check=false)
     @hassert :ZZLatWithIsom 1 is_of_hermitian_type(MfM)
     first && return ZZLatWithIsom[MfM]
@@ -1169,6 +1168,11 @@ function splitting_of_hermitian_type(
         filter!(LB -> rank(LB) == 0 || minimum(LB) != 2, Bs)
       end
       isempty(Bs) && continue
+      As = representatives_of_hermitian_type(A, n, fix_root; genusDB)
+      if root_test && iszero(signature_tuple(A)[1]) # Remove lattices with (-2)-vectors
+        filter!(LA -> rank(LA) == 0 || minimum(LA) != 2, As)
+      end
+      isempty(As) && continue
       for LA in As, LB in Bs
         Es = admissible_equivariant_primitive_extensions(LA, LB, Lf, p; check=false, test_type=false)
         if fix_root == k

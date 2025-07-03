@@ -329,20 +329,15 @@ end
 function _possible_glue_orders(
     qM::TorQuadModule,
     qN::TorQuadModule,
-    glue_order::Union{Nothing, IntegerUnion},
   )
-  if !isnothing(glue_order)
-    pos_ord = typeof(glue_order)[glue_order]
-  else
-    _gcd = ZZ(1)
-    snM = reverse!(elementary_divisors(qM))
-    snN = reverse!(elementary_divisors(qN))
-    k = min(length(snM), length(snN))
-    for i in 1:k
-      mul!(_gcd, _gcd, gcd(snM[i], snN[i]))
-    end
-    pos_ord = divisors(_gcd)
+  _gcd = ZZ(1)
+  snM = reverse!(elementary_divisors(qM))
+  snN = reverse!(elementary_divisors(qN))
+  k = min(length(snM), length(snN))
+  for i in 1:k
+    mul!(_gcd, _gcd, gcd(snM[i], snN[i]))
   end
+  pos_ord = divisors(_gcd)
   return pos_ord
 end
 
@@ -609,7 +604,7 @@ function _primitive_extensions_generic(
     fN::QQMatrix=identity_matrix(QQ, rank(N)),
     fqN::TorQuadModuleMap=id_hom(domain(GN)),
     chiN::QQPolyRingElem=minimal_polynomial(fN),
-    glue_order::Union{IntegerUnion, Nothing}=nothing,
+    glue_order::Union{AbstractVector, Nothing}=nothing,
     q::Union{TorQuadModule, Nothing}=nothing,
     compute_bar_Gf::Bool=false,
     OqfM::Union{Nothing, AutomorphismGroup{TorQuadModule}}=nothing,
@@ -634,11 +629,13 @@ function _primitive_extensions_generic(
   # We check the initial conditions for having a primitive
   # extension with the potential given requirements
   if !isnothing(glue_order)
-    @req glue_order > 0 "Order of glue groups must be a positive integer"
-    !is_divisible_by(numerator(gcd(det(M), det(N))), glue_order) && return false, results
+    @req all(>(0), glue_order) "Order of glue groups must be a positive integer"
+    filter!(o -> is_divisible_by(numerator(gcd(det(M), det(N))), o), glue_order)
+    isempty(glue_order) && return false, results
     if !isnothing(q)
       @req modulus_bilinear_form(q) == 1 "q does not define the discriminant form of an integral lattice"
-      glue_order^2*order(q) == abs(det(M)*det(N)) || return false, results
+      filter!(o -> o^2*order(q) == abs(det(M)*det(N)), glue_order)
+      isempty(glue_order) && return false, results
       aM, _, bM = signature_tuple(M)
       aN, _, bN = signature_tuple(N)
       !is_genus(q, (aM+aN, bM+bN); parity) && return false, results
@@ -652,8 +649,9 @@ function _primitive_extensions_generic(
     G = genus(q, (aM+aN, bM+bN); parity)
     ok, x = divides(numerator(det(M)*det(N)), order(q))
     !ok && return false, results
-    ok, glue_order = is_square_with_sqrt(abs(x))
+    ok, o = is_square_with_sqrt(abs(x))
     !ok && return false, results
+    glue_order = [o]
   end
 
   # Methods are simpler if we work in a fixed space
@@ -692,7 +690,9 @@ function _primitive_extensions_generic(
   # #TODO: we could improve more the collection of common anti-isometric
   # subgroups of qM and qN by working with common abelian group substructures
   # for each possible order.
-  pos_ord = _possible_glue_orders(qM, qN, glue_order)
+  if isnothing(q) && isnothing(glue_order)
+    glue_order = _possible_glue_orders(qM, qN)
+  end
 
   # In the primary and elementary case, we can make things faster
   prM, pM = is_primary_with_prime(M)
@@ -707,7 +707,7 @@ function _primitive_extensions_generic(
   # We do everything in the good primary parts
   all_prim = (prM && pM != 1) || (prN && pN != 1)
 
-  for k in pos_ord
+  for k in glue_order
     ok, ek, pk = is_prime_power_with_data(k)
     # If k is a prime power, then we check whether any of the pk-primary part
     # of qM or qN is elementary (to make things faster)
@@ -1227,7 +1227,7 @@ even.
 function primitive_extensions(
     M::ZZLat,
     N::ZZLat;
-    glue_order::Union{IntegerUnion, Nothing}=nothing,
+    glue_order::Union{AbstractVector, Nothing}=nothing,
     q::Union{TorQuadModule, Nothing}=nothing,
     even::Bool=(is_even(M) && is_even(N)),
     classification::Symbol=:subsub,
@@ -1701,7 +1701,7 @@ equivariant_primitive_extensions(::Union{ZZLatWithIsom, ZZLat}, ::Union{ZZLat, Z
 function equivariant_primitive_extensions(
     M::ZZLatWithIsom,
     N::ZZLatWithIsom;
-    glue_order::Union{IntegerUnion, Nothing}=nothing,
+    glue_order::Union{AbstractVector, Nothing}=nothing,
     q::Union{TorQuadModule, Nothing}=nothing,
     even::Bool=(is_even(M) && is_even(N)),
     classification::Symbol=:subsub,
@@ -1741,7 +1741,7 @@ end
 function equivariant_primitive_extensions(
     M::ZZLatWithIsom,
     N::ZZLat;
-    glue_order::Union{IntegerUnion, Nothing}=nothing,
+    glue_order::Union{AbstractVector, Nothing}=nothing,
     q::Union{TorQuadModule, Nothing}=nothing,
     even::Bool=(is_even(M) && is_even(N)),
     classification::Symbol=:subsub,
@@ -1786,7 +1786,7 @@ end
 function equivariant_primitive_extensions(
     M::ZZLat,
     N::ZZLatWithIsom;
-    glue_order::Union{IntegerUnion, Nothing}=nothing,
+    glue_order::Union{AbstractVector, Nothing}=nothing,
     q::Union{TorQuadModule, Nothing}=nothing,
     even::Bool=(is_even(M) && is_even(N)),
     classification::Symbol=:subsub,

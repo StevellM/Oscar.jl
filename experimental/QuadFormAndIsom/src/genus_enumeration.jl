@@ -455,6 +455,8 @@ function _smart_representatives(
   root_test::Bool=false,
   save_partial::Bool=false,
   save_path::Union{IO, String, Nothing}=nothing,
+  stop_after=1000,
+  info_level::Int=2,
 )
   if !is_definite(G) || rank(G) <= 2
     return Hecke.representatives(G)
@@ -471,7 +473,7 @@ function _smart_representatives(
       return ZZLat[]
     end
   end
-  l = __enumerate_definite_genus(G, algorithm; save_partial, save_path, stop_after=1000)
+  l = __enumerate_definite_genus(G, algorithm; save_partial, save_path, stop_after)
   @assert !isempty(l)
   mm = mass(G) - sum(1//isometry_group_order(LL) for LL in l; init=QQ(0))
   if !iszero(mm)
@@ -486,66 +488,76 @@ function _smart_representatives(
         inv_dict[inv_lat] = ZZLat[N]
       end
     end
-    q = next_prime(last(Hecke.primes_up_to(r+1)))
     Lf = integer_lattice_with_isometry(l[1])
     pos = is_positive_definite(Lf)
+    Ps = reverse!(Int.(Hecke.primes_up_to(r+1)))
+    D = Dict{Int, AbstractVector{Int}}(p => p == 2 ? collect(div(r, 2, RoundUp):-1:1) : collect(r.-reverse(p-1:p-1:r)) for p in Ps)
     # Looking for certain lattices with isometry
     while !iszero(mm)
       d = denominator(mm)
       if isone(d)
-        p = last(Hecke.primes_up_to(q-1))
+        i = 1
       else
-        p = maximum(prime_divisors(d))
-      end
-      @show d, p
-      if p == 2
-        interv = div(r, 2, RoundUp):-1:1
-      else
-        interv = reverse(p-1:p-1:r)
-      end
-      for k in interv
-        if pos
-	  atp = admissible_triples(Lf, Int(p); IrA=Int[r-k], IpA=Int[r-k], InA=Int[0], IrB=Int[k], IpB=Int[k], InB=Int[0], b=1)
-        else
-	  atp = admissible_triples(Lf, Int(p); IrA=Int[r-k], IpA=Int[0], InA=Int[r-k], IrB=Int[k], IpB=Int[0], InB=Int[k], b=1)
-        end
-	@show length(atp)
-	for (A, B) in atp
-	  As = representatives_of_hermitian_type(A, 1; genusDB)
-          isempty(As) && continue
-	  Bs = representatives_of_hermitian_type(B, Int(p); genusDB)
-          isempty(Bs) && continue
-	  for LA in As, LB in Bs
-     	    Ns = admissible_equivariant_primitive_extensions(LA, LB, Lf, Int(p); check=false)
-            for Nf in Ns
-              N = lll(lattice(Nf))
-              invN = _default_invariant_function(N)
-              if !haskey(inv_dict, invN)
-                inv_dict[invN] = ZZLat[N]
-	        push!(l, N)
-	        if save_partial
-    	          Hecke.save_lattice(N, save_path)
-	        end
-	        s = isometry_group_order(N)
-	        sub!(mm, mm, 1//s)
-              elseif all(M -> !is_isometric_smart(N, M), inv_dict[invN])
-                push!(inv_dict[invN], N)
-                push!(l, N)
-                if save_partial
-    	          Hecke.save_lattice(N, save_path)
-	        end
-	        s = isometry_group_order(N)
-	        sub!(mm, mm, 1//s)
-	      end
-	      is_zero(mm) && break
-            end
-	    is_zero(mm) && break
+        Pd = filter(i -> iszero(mod(d, Ps[i])), 1:length(Ps))
+	@assert !isempty(Pd)
+	i = first(Pd)
+	for j in Pd[2:end]
+  	  if first(D[Ps[j]]) < first(D[Ps[i]])
+	    i = j
 	  end
-          is_zero(mm) && break
+	end
+      end
+      p = Ps[i]
+      k = popfirst!(D[p])
+      @show (k,p)
+      if isempty(D[p])
+        popat!(Ps, i)
+      end
+      if pos
+        atp = admissible_triples(Lf, p; IrA=Int[k], IpA=Int[k], InA=Int[0], IrB=Int[r-k], IpB=Int[r-k], InB=Int[0], b=1)
+      else
+       atp = admissible_triples(Lf, p; IrA=Int[k], IpA=Int[0], InA=Int[k], IrB=Int[r-k], IpB=Int[0], InB=Int[r-k], b=1)
+      end
+      @show length(atp)
+      for (A, B) in atp
+        As = representatives_of_hermitian_type(A, 1; genusDB, info_level)
+        isempty(As) && continue
+        Bs = representatives_of_hermitian_type(B, Int(p); genusDB, info_level)
+        isempty(Bs) && continue
+        for LA in As, LB in Bs
+          Ns = admissible_equivariant_primitive_extensions(LA, LB, Lf, Int(p); check=false)
+          for Nf in Ns
+		  flag=false
+            N = lll(lattice(Nf))
+            invN = _default_invariant_function(N)
+            if !haskey(inv_dict, invN)
+              inv_dict[invN] = ZZLat[N]
+              push!(l, N)
+	      flag=true
+              if save_partial
+                Hecke.save_lattice(N, save_path)
+              end
+              s = isometry_group_order(N)
+              sub!(mm, mm, 1//s)
+            elseif all(M -> !is_isometric_smart(N, M), inv_dict[invN])
+              push!(inv_dict[invN], N)
+              push!(l, N)
+	      flag=true
+              if save_partial
+                Hecke.save_lattice(N, save_path)
+              end
+              s = isometry_group_order(N)
+              sub!(mm, mm, 1//s)
+            end
+            is_zero(mm) && break
+	    if flag && info_level <= 2
+	        perc = Float64(mm//mass(G)) * 100
+		println("Lattices: $(length(l)), Target mass: $(mass(G)). missing: $(mm) ($(perc)%)")
+            end
+          end
+	  GC.gc()
+	  GC.gc()
         end
-	@v_do :ZZLatWithIsom 1 perc = Float64(mm//mass(G)) * 100
-	@vprintln :ZZLatWithIsom 1 "Lattices: $(length(l)), Target mass: $(mass(G)). missing: $(mm) ($(perc)%)"
-        is_zero(mm) && break
       end
     end
   end
@@ -571,7 +583,7 @@ function __get_half_gram(L::ZZLat)
   end
   str = str[1:end-1]*"]"
   if isdefined(L, :automorphism_group_order)
-    str *= "\n$(L.automorphism_group_order))"
+    str *= "\n$(L.automorphism_group_order)"
   end
   return str
 end
