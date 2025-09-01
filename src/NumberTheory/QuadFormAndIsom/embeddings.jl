@@ -398,7 +398,11 @@ function _fitting_isometries(
     first::Bool,
   )
   OHN = orthogonal_group(domain(HNinqN)) # This is normally cached
-  _stabN, _ = stabilizer(GN, HNinqN) # A priori, this could be different from stabN
+  if is_bijective(HNinqN)
+    _stabN = GN
+  else
+    _stabN, _ = stabilizer(GN, HNinqN) # A priori, this could be different from stabN
+  end
   imOHN = elem_type(OHN)[OHN(restrict_automorphism(x, HNinqN; check=false); check=false) for x in gens(_stabN)]
   _actN = hom(_stabN, OHN, imOHN; check=false)
   _imN, _ = image(_actN) # This group consists of isometry of HN which can be lifted to O(N)
@@ -824,7 +828,6 @@ function _primitive_extensions_generic(
           else
             reporb = QQMatrix[fN]
           end
-
           for b in reporb
             L, fL, graph = _overlattice(phig, HMinD, HNinD, fM, b; same_ambient)
 

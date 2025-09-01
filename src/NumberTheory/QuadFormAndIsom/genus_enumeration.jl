@@ -456,7 +456,7 @@ function _smart_representatives(
   save_partial::Bool=false,
   save_path::Union{IO, String, Nothing}=nothing,
   stop_after=1000,
-  info_level::Int=2,
+  info_depth::Int=2,
 )
   if !is_definite(G) || rank(G) <= 2
     return Hecke.representatives(G)
@@ -491,7 +491,7 @@ function _smart_representatives(
     Lf = integer_lattice_with_isometry(l[1])
     pos = is_positive_definite(Lf)
     Ps = reverse!(Int.(Hecke.primes_up_to(r+1)))
-    D = Dict{Int, AbstractVector{Int}}(p => p == 2 ? collect(div(r, 2, RoundUp):-1:1) : collect(r.-reverse(p-1:p-1:r)) for p in Ps)
+    D = Dict{Int, AbstractVector{Int}}(p => p == 2 ? collect(div(r, 2, RoundDown):-1:1) : collect(r.-reverse(p-1:p-1:r)) for p in Ps)
     # Looking for certain lattices with isometry
     while !iszero(mm)
       d = denominator(mm)
@@ -520,9 +520,9 @@ function _smart_representatives(
       end
       @show length(atp)
       for (A, B) in atp
-        As = representatives_of_hermitian_type(A, 1; genusDB, info_level)
+        As = representatives_of_hermitian_type(A, 1; genusDB, info_depth)
         isempty(As) && continue
-        Bs = representatives_of_hermitian_type(B, Int(p); genusDB, info_level)
+        Bs = representatives_of_hermitian_type(B, Int(p); genusDB, info_depth)
         isempty(Bs) && continue
         for LA in As, LB in Bs
           Ns = admissible_equivariant_primitive_extensions(LA, LB, Lf, Int(p); check=false)
@@ -550,7 +550,7 @@ function _smart_representatives(
               sub!(mm, mm, 1//s)
             end
             is_zero(mm) && break
-	    if flag && info_level <= 2
+	    if flag && info_depth <= 2
 	        perc = Float64(mm//mass(G)) * 100
 		println("Lattices: $(length(l)), Target mass: $(mass(G)). missing: $(mm) ($(perc)%)")
             end

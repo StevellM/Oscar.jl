@@ -486,7 +486,7 @@ julia> order(Oq)
   end
   # we can compute the orthogonal group of L
   Oq = orthogonal_group(discriminant_group(L))
-  G = orthogonal_group(L)
+  G, _ = isometry_group_smart(L)
   return sub(Oq, unique!([Oq(g; check = false) for g in gens(G)]))
 end
 

@@ -491,6 +491,9 @@ julia> order(S)
 ```
 """
 function stabilizer(O::AutomorphismGroup{TorQuadModule}, i::TorQuadModuleMap)
+  if is_bijective(i)
+    return O, id_hom(O)
+  end
   to_gap = get_attribute(O, :to_gap)
   Agap = codomain(to_gap)
   Hgap, _ = sub(Agap, elem_type(Agap)[to_gap(i(a)) for a in gens(domain(i))])

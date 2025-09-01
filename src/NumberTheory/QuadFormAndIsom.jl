@@ -10,3 +10,5 @@ include("QuadFormAndIsom/hermitian_miranda_morrison.jl")
 include("QuadFormAndIsom/enumeration.jl")
 include("QuadFormAndIsom/embeddings.jl")
 include("QuadFormAndIsom/printings.jl")
+include("QuadFormAndIsom/genus_enumeration.jl")
+

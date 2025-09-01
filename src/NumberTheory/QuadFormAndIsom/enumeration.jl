@@ -946,7 +946,11 @@ function representatives_of_hermitian_type(
     first && return ZZLatWithIsom[MfM]
 
     allow_info && println("Enumerate hermitian genus of rank $(rank(H))")
-    gr = genus_representatives(H)
+    if is_definite(H) && rank(H) >= 3
+      gr = enumerate_definite_genus(H, :random)
+    else
+      gr = genus_representatives(H; use_auto=false)
+    end
     for HH in gr
       M, fM = trace_lattice_with_isometry(HH)
       push!(reps, integer_lattice_with_isometry(M, fM; check=false))
@@ -2414,7 +2418,9 @@ function oscar_genus_representatives(
   # We do not need anything new, Hecke can handle this perfectly
   if !is_definite(G) || rank(G) <= 2
     allow_info && println("Indefinite genus or of small rank")
-    return Hecke.representatives(G)
+    L = representative(G)
+    L = lll(L)
+    return Hecke.genus_representatives(L)
   end
 
   # Maybe the genus `G` is already known in the datatabse genusDB
@@ -2548,9 +2554,13 @@ function oscar_genus_representatives(
               perc = Float64(mm//mass(G)) * 100
               println("Lattices: $(length(l)), Target mass: $(mass(G)). missing: $(mm) ($(perc)%)")
             end
+	    GC.gc()
           end
+	  GC.gc()
         end
+	GC.gc()
       end
+      GC.gc()
     end
   end
   # If we have a lattice database, then we add the new genus there to be
